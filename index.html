@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GPX 3D Trail Director V15</title>
+    <title>GPX 3D Trail Director</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/maplibre-gl@4.3.2/dist/maplibre-gl.js"></script>
     <link href="https://unpkg.com/maplibre-gl@4.3.2/dist/maplibre-gl.css" rel="stylesheet" />
@@ -40,7 +40,7 @@
                 </div>
                 <div>
                     <h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
-                        GPX 3D Trail Director <span class="bg-blue-500/10 text-blue-400 text-[10px] px-2.5 py-0.5 rounded-full uppercase font-extrabold border border-blue-500/30">V15</span>
+                        GPX 3D Trail Director <span class="bg-blue-500/10 text-blue-400 text-[10px] px-2.5 py-0.5 rounded-full uppercase font-extrabold border border-blue-500/30">PRO</span>
                     </h1>
                 </div>
             </div>
@@ -65,12 +65,11 @@
             
             <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl">
                 <h2 class="font-bold text-slate-400 mb-2 text-xs uppercase tracking-wider">1. Trasa a Název</h2>
-                
                 <div id="dropzone" class="border-2 border-dashed border-slate-700 hover:border-amber-500 rounded-xl p-6 text-center cursor-pointer transition-all bg-slate-950/50 mb-3 flex flex-col items-center justify-center">
+                    <input type="file" id="fileInput" accept=".gpx" class="hidden" />
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-slate-500 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
                     <p class="text-xs font-semibold text-slate-300" id="dropzoneText">Klikni nebo přetáhni .GPX</p>
                 </div>
-                
                 <div id="nameInputWrapper" style="display:none; opacity:0; transition: opacity 0.4s;">
                     <label class="text-[10px] text-slate-500 uppercase font-bold tracking-wider block mb-1">Název ve videu (smaž pro skrytí):</label>
                     <input type="text" id="customRouteName" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white font-bold outline-none focus:border-amber-500 transition-all" />
@@ -116,7 +115,7 @@
                             </div>
                             <div class="flex items-center gap-2">
                                 <input type="checkbox" id="showEleGain" class="w-4 h-4 accent-amber-500 rounded cursor-pointer" checked />
-                                <label for="showEleGain" class="text-[11px] font-bold text-blue-400 cursor-pointer select-none">Ukázat nastoupané metry</label>
+                                <label for="showEleGain" class="text-[11px] font-bold text-blue-400 cursor-pointer select-none">Ukázat celkové stoupání (m)</label>
                             </div>
                         </div>
                     </div>
@@ -149,7 +148,7 @@
                     <h2 class="text-3xl sm:text-5xl font-black text-white uppercase tracking-tight drop-shadow-xl" id="routeNameHud">Trasa načtena</h2>
                     <div id="hudTitleUnderline" class="w-24 h-2 bg-amber-500 mt-2 rounded-full shadow-[0_0_15px_rgba(245,158,11,0.6)]"></div>
                     <p id="hudElevationGain" class="text-sm sm:text-base font-bold text-amber-400 tracking-widest uppercase mt-3 drop-shadow-md" style="display:none;">
-                        Nastoupáno: <span class="text-white" id="eleGainVal">0 m</span>
+                        Celkové stoupání: <span class="text-white" id="eleGainVal">0 m</span>
                     </p>
                 </div>
 
@@ -160,77 +159,4 @@
                 <div id="hud-stats" class="hud-overlay bottom-8 left-0 right-0 px-8 flex justify-between items-end" style="display:none">
                     <div class="flex gap-8 bg-black/60 p-5 rounded-3xl backdrop-blur-md border border-white/10 shadow-2xl">
                         <div>
-                            <span class="text-xs font-bold text-amber-400 uppercase tracking-widest block mb-0.5 opacity-90">Ujeta vzdálenost</span>
-                            <span class="text-5xl font-black text-white" id="hudDist">0.0<span class="text-2xl text-slate-300 ml-1">km</span></span>
-                        </div>
-                        <div class="border-l border-white/20 pl-8">
-                            <span class="text-xs font-bold text-amber-400 uppercase tracking-widest block mb-0.5 opacity-90">Nadm. výška</span>
-                            <span class="text-5xl font-black text-white" id="hudEle">0<span class="text-2xl text-slate-300 ml-1">m</span></span>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="hud-overlay top-6 right-6 opacity-40">
-                    <span class="text-xs sm:text-sm font-black text-white tracking-widest uppercase">Trail Director <span class="text-amber-500">3D</span></span>
-                </div>
-            </div>
-        </div>
-    </main>
-
-    <footer class="w-full py-6 mt-8 border-t border-slate-900 bg-slate-950 text-center">
-        <p class="text-xs text-slate-500 uppercase tracking-widest font-semibold">
-            Vytvořil <span class="text-amber-500 font-black">Wondraz</span> © 2024
-        </p>
-    </footer>
-
-    <input type="file" id="fileInput" accept=".gpx" style="display:none;" />
-
-    <script>
-        let map;
-        let gpxtrackData = []; 
-        let totalTrackDistance = 0; 
-        let totalElevationGain = 0;
-
-        let isPlaying = false;
-        let currentIdx = 0;
-        let currentAnimDist = 0; 
-        let speedFactor = 16; 
-        let animationFrameId = null; 
-        let is3DMode = true; 
-        let poisVisible = true;
-
-        let smoothLat = null; let smoothLon = null; let smoothBearing = null; let smoothPitch = 65;
-        let mediaRecorder = null; let recordedChunks = []; let isRecording = false;
-        let videoMimeType = 'video/webm;codecs=vp9'; let videoExt = 'webm';
-
-        function checkVideoFormatSupport() {
-            if (MediaRecorder.isTypeSupported('video/mp4;codecs=avc1')) { videoMimeType = 'video/mp4;codecs=avc1'; videoExt = 'mp4'; } 
-            else if (MediaRecorder.isTypeSupported('video/mp4')) { videoMimeType = 'video/mp4'; videoExt = 'mp4'; } 
-            else { videoMimeType = 'video/webm;codecs=vp9'; videoExt = 'webm'; }
-        }
-
-        function initMap() {
-            map = new maplibregl.Map({
-                container: 'map',
-                style: {
-                    version: 8,
-                    sources: {
-                        'satellite': { type: 'raster', tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'], tileSize: 256 },
-                        'topo': { type: 'raster', tiles: ['https://a.tile.opentopomap.org/{z}/{x}/{y}.png'], tileSize: 256 },
-                        'terrainSource': { type: 'raster-dem', tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'], encoding: 'terrarium', tileSize: 256, maxzoom: 13 }
-                    },
-                    layers: [
-                        { id: 'topo-layer', type: 'raster', source: 'topo', layout: { visibility: 'none' } },
-                        { id: 'satellite-layer', type: 'raster', source: 'satellite', layout: { visibility: 'visible' } }
-                    ],
-                    terrain: { source: 'terrainSource', exaggeration: 1.8 } 
-                },
-                center: [15.732, 50.729], zoom: 12, pitch: 65, bearing: 0
-            });
-            map.setMaxPitch(85);
-        }
-
-        function getBearing(lat1, lon1, lat2, lon2) {
-            const dLon = (lon2 - lon1) * Math.PI / 180;
-            const y = Math.sin(dLon) * Math.cos(lat2 * Math.PI / 180);
-            const x = Math.cos(lat1 * Math.PI / 180) * Math.sin(lat2 * Math.PI / 180) -
+                            <span class="text-
