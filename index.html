@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GPX 3D Trail Director V15 - POI Fix</title>
+    <title>GPX 3D Trail Director</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/maplibre-gl@4.3.2/dist/maplibre-gl.js"></script>
     <link href="https://unpkg.com/maplibre-gl@4.3.2/dist/maplibre-gl.css" rel="stylesheet" />
@@ -40,7 +40,7 @@
                 </div>
                 <div>
                     <h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
-                        GPX 3D Trail Director <span class="bg-blue-500/10 text-blue-400 text-[10px] px-2.5 py-0.5 rounded-full uppercase font-extrabold border border-blue-500/30">V15</span>
+                        GPX 3D Trail Director <span class="bg-blue-500/10 text-blue-400 text-[10px] px-2.5 py-0.5 rounded-full uppercase font-extrabold border border-blue-500/30">PRO</span>
                     </h1>
                 </div>
             </div>
@@ -115,7 +115,7 @@
                             </div>
                             <div class="flex items-center gap-2">
                                 <input type="checkbox" id="showEleGain" class="w-4 h-4 accent-amber-500 rounded cursor-pointer" checked />
-                                <label for="showEleGain" class="text-[11px] font-bold text-blue-400 cursor-pointer select-none">Ukázat nastoupané metry</label>
+                                <label for="showEleGain" class="text-[11px] font-bold text-blue-400 cursor-pointer select-none">Ukázat celkové stoupání (m)</label>
                             </div>
                         </div>
                     </div>
@@ -148,7 +148,7 @@
                     <h2 class="text-3xl sm:text-5xl font-black text-white uppercase tracking-tight drop-shadow-xl" id="routeNameHud">Trasa načtena</h2>
                     <div id="hudTitleUnderline" class="w-24 h-2 bg-amber-500 mt-2 rounded-full shadow-[0_0_15px_rgba(245,158,11,0.6)]"></div>
                     <p id="hudElevationGain" class="text-sm sm:text-base font-bold text-amber-400 tracking-widest uppercase mt-3 drop-shadow-md" style="display:none;">
-                        Nastoupáno: <span class="text-white" id="eleGainVal">0 m</span>
+                        Celkové stoupání: <span class="text-white" id="eleGainVal">0 m</span>
                     </p>
                 </div>
 
@@ -178,7 +178,7 @@
 
     <footer class="w-full py-6 mt-auto border-t border-slate-900 bg-slate-950 text-center">
         <p class="text-xs text-slate-500 uppercase tracking-widest font-semibold">
-            Vytvořil <span class="text-amber-500 font-black">Wondraz</span> © 2024
+            Vytvořil <span class="text-amber-500 font-black">Wondraz</span> © 2026
         </p>
     </footer>
 
@@ -211,8 +211,6 @@
                 container: 'map',
                 style: {
                     version: 8,
-                    // KLÍČOVÁ OPRAVA: Přidán font pro správné vykreslování textových symbolů (hor a měst)
-                    glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
                     sources: {
                         'satellite': { type: 'raster', tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'], tileSize: 256 },
                         'topo': { type: 'raster', tiles: ['https://a.tile.opentopomap.org/{z}/{x}/{y}.png'], tileSize: 256 },
@@ -294,7 +292,7 @@
         async function fetchAndDisplayPOIs(pts) {
             if(pts.length === 0) return;
             const btn = document.getElementById('togglePois');
-            btn.innerText = "Hledám body...";
+            btn.innerText = "Hledám vrcholy...";
             
             let minLat = 90, maxLat = -90, minLon = 180, maxLon = -180;
             pts.forEach(p => {
@@ -319,7 +317,6 @@
                 if (map.getSource('pois')) map.getSource('pois').setData({type: "FeatureCollection", features});
                 else {
                     map.addSource('pois', { type: 'geojson', data: {type: "FeatureCollection", features} });
-                    // Využití správně zavedeného fontu k renderování jmen
                     map.addLayer({ id: 'poi-peaks', type: 'symbol', source: 'pois', filter: ['==', 'type', 'peak'], layout: { 'text-field': ['concat', '▲ ', ['get', 'name'], '\n', ['get', 'ele'], ' m'], 'text-size': 13, 'text-anchor': 'bottom', 'text-offset': [0, -1], 'symbol-placement': 'point' }, paint: { 'text-color': '#fbbf24', 'text-halo-color': 'rgba(0,0,0,0.85)', 'text-halo-width': 2 } });
                     map.addLayer({ id: 'poi-places', type: 'symbol', source: 'pois', filter: ['==', 'type', 'place'], layout: { 'text-field': ['get', 'name'], 'text-size': 15, 'text-anchor': 'center', 'text-offset': [0, 1] }, paint: { 'text-color': '#ffffff', 'text-halo-color': 'rgba(0,0,0,0.85)', 'text-halo-width': 2 } });
                 }
@@ -329,7 +326,7 @@
             } catch (err) {
                 console.warn("POI API Blocked or Network Error.");
                 btn.innerText = "Chyba sítě u OSM";
-                btn.className = "bg-slate-800 border border-slate-700 text-slate-500 text-[11px] font-bold py-1.5 rounded-lg transition-all cursor-not-allowed";
+                btn.className = "bg-slate-800 border border-slate-700 text-slate-500 text-[11px] font-bold py-1.5 rounded-lg transition-all";
             }
         }
 
@@ -396,11 +393,9 @@
             const exactLat = pt.lat + (nextPt.lat - pt.lat) * fraction;
             const exactLon = pt.lon + (nextPt.lon - pt.lon) * fraction;
             const exactDist = pt.dist + (nextPt.dist - pt.dist) * fraction;
-            const exactEleGain = pt.eleGain + (nextPt.eleGain - pt.eleGain) * fraction;
 
             document.getElementById('hudDist').innerHTML = exactDist.toFixed(1) + '<span class="text-2xl text-slate-300 ml-1">km</span>';
             document.getElementById('hudEle').innerHTML = Math.round(pt.ele + (nextPt.ele - pt.ele) * fraction) + '<span class="text-2xl text-slate-300 ml-1">m</span>';
-            document.getElementById('eleGainVal').innerText = Math.round(exactEleGain) + " m";
 
             drawHUDProfile();
 
@@ -498,7 +493,7 @@
                         const eleDiff = ele - pts[pts.length-1].ele;
                         if(eleDiff > 0) eleGain += eleDiff;
                     }
-                    pts.push({ lat, lon, ele, dist, eleGain });
+                    pts.push({ lat, lon, ele, dist });
                 }
                 
                 if(pts.length < 2) { alert("Trasa je příliš krátká."); return; }
@@ -519,7 +514,7 @@
             
             document.getElementById('hudTitleUnderline').style.display = routeName.trim() ? 'block' : 'none';
             
-            document.getElementById('eleGainVal').innerText = "0 m";
+            document.getElementById('eleGainVal').innerText = totalElevationGain + " m";
             document.getElementById('hudElevationGain').style.display = document.getElementById('showEleGain').checked ? 'block' : 'none';
             
             document.getElementById('nameInputWrapper').style.display = "block";
@@ -591,7 +586,7 @@
                         const diff = ele - pts[i-1].ele;
                         if(diff > 0) eleGain += diff;
                     }
-                    pts.push({ lat, lon, ele, dist, eleGain });
+                    pts.push({ lat, lon, ele, dist });
                 }
                 totalElevationGain = Math.round(eleGain);
                 loadGPXData(pts, dist, "VÝŠLAP NA SNĚŽKU 🏔️");
