@@ -3,11 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GPX 3D Trail Director</title>
+    <title>GPX 3D Trail Director V12 - HUD Profile</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/maplibre-gl@4.3.2/dist/maplibre-gl.js"></script>
     <link href="https://unpkg.com/maplibre-gl@4.3.2/dist/maplibre-gl.css" rel="stylesheet" />
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
     <style>
         #map-wrapper {
@@ -21,6 +20,7 @@
             z-index: 99999 !important; border-radius: 0 !important;
         }
         #map { position: absolute; top: 0; left: 0; right: 0; bottom: 0; outline: none; }
+        
         .hud-overlay { position: absolute; pointer-events: none; z-index: 10; text-shadow: 0px 3px 12px rgba(0, 0, 0, 0.9); }
         .ad-space { background-image: repeating-linear-gradient(45deg, #0f172a 25%, transparent 25%, transparent 75%, #0f172a 75%, #0f172a), repeating-linear-gradient(45deg, #0f172a 25%, #020617 25%, #020617 75%, #0f172a 75%, #0f172a); background-size: 20px 20px; }
         ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: #0f172a; } ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
@@ -40,7 +40,7 @@
                 </div>
                 <div>
                     <h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
-                        GPX 3D Trail Director <span class="bg-blue-500/10 text-blue-400 text-[10px] px-2.5 py-0.5 rounded-full uppercase font-extrabold border border-blue-500/30">PRO Web</span>
+                        GPX 3D Trail Director <span class="bg-blue-500/10 text-blue-400 text-[10px] px-2.5 py-0.5 rounded-full uppercase font-extrabold border border-blue-500/30">V12 PRO</span>
                     </h1>
                 </div>
             </div>
@@ -62,9 +62,10 @@
     <main class="max-w-7xl mx-auto w-full px-4 py-6 flex-1 grid grid-cols-1 lg:grid-cols-4 gap-6">
         
         <div class="lg:col-span-1 flex flex-col gap-5">
+            
             <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl">
                 <h2 class="font-bold text-slate-400 mb-2 text-xs uppercase tracking-wider">1. Trasa a Název</h2>
-                <div id="dropzone" class="border-2 border-dashed border-slate-700 hover:border-amber-500 rounded-xl p-6 text-center cursor-pointer transition-all bg-slate-950/50 mb-3 relative overflow-hidden flex flex-col items-center justify-center">
+                <div id="dropzone" class="border-2 border-dashed border-slate-700 hover:border-amber-500 rounded-xl p-6 text-center cursor-pointer transition-all bg-slate-950/50 mb-3 flex flex-col items-center justify-center">
                     <input type="file" id="fileInput" accept=".gpx" class="hidden" />
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-slate-500 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
                     <p class="text-xs font-semibold text-slate-300" id="dropzoneText">Klikni nebo přetáhni .GPX</p>
@@ -102,10 +103,16 @@
                             <span class="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Vrcholy & Města</span>
                             <button id="togglePois" class="bg-emerald-600 text-white border border-emerald-500 text-[11px] font-bold py-1.5 rounded-lg shadow-md transition-all">Zobrazeno ON</button>
                         </div>
-
-                        <div class="col-span-2 flex items-center gap-2 mt-1 bg-slate-950/50 p-2 rounded-xl border border-slate-800">
-                            <input type="checkbox" id="ignoreSpeed" class="w-4 h-4 accent-amber-500 rounded cursor-pointer" checked />
-                            <label for="ignoreSpeed" class="text-[11px] font-bold text-slate-300 cursor-pointer select-none">Plynule (kopec nekopec)</label>
+                        
+                        <div class="col-span-2 flex flex-col gap-2 mt-1 bg-slate-950/50 p-2.5 rounded-xl border border-slate-800">
+                            <div class="flex items-center gap-2">
+                                <input type="checkbox" id="ignoreSpeed" class="w-4 h-4 accent-amber-500 rounded cursor-pointer" checked />
+                                <label for="ignoreSpeed" class="text-[11px] font-bold text-slate-300 cursor-pointer select-none">Plynule (kopec nekopec)</label>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <input type="checkbox" id="showProfile" class="w-4 h-4 accent-amber-500 rounded cursor-pointer" checked />
+                                <label for="showProfile" class="text-[11px] font-bold text-emerald-400 cursor-pointer select-none">Ukázat výškový profil ve videu</label>
+                            </div>
                         </div>
                     </div>
                     
@@ -129,13 +136,17 @@
 
         </div>
 
-        <div class="lg:col-span-3 flex flex-col gap-6">
+        <div class="lg:col-span-3">
             <div id="map-wrapper">
                 <div id="map"></div>
                 
                 <div id="hud-title" class="hud-overlay top-6 left-6" style="display:none">
                     <h2 class="text-3xl sm:text-5xl font-black text-white uppercase tracking-tight drop-shadow-xl" id="routeNameHud">Trasa načtena</h2>
                     <div class="w-24 h-2 bg-amber-500 mt-2 rounded-full shadow-[0_0_15px_rgba(245,158,11,0.6)]"></div>
+                </div>
+
+                <div id="hud-profile-container" class="hud-overlay bottom-[120px] left-8 right-8 h-20 opacity-90 transition-opacity duration-300" style="display:none">
+                    <canvas id="profileCanvas" width="1920" height="150" class="w-full h-full drop-shadow-lg"></canvas>
                 </div>
 
                 <div id="hud-stats" class="hud-overlay bottom-8 left-0 right-0 px-8 flex justify-between items-end" style="display:none">
@@ -155,16 +166,6 @@
                     <span class="text-xs sm:text-sm font-black text-white tracking-widest uppercase">Trail Director <span class="text-amber-500">3D</span></span>
                 </div>
             </div>
-
-            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl hidden" id="chartContainer">
-                <h3 class="font-bold text-slate-400 mb-3 text-xs uppercase tracking-wider flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
-                    Výškový profil trasy
-                </h3>
-                <div class="relative w-full h-32">
-                    <canvas id="elevationChart"></canvas>
-                </div>
-            </div>
         </div>
     </main>
 
@@ -172,6 +173,7 @@
         let map;
         let gpxtrackData = []; 
         let totalTrackDistance = 0; 
+
         let isPlaying = false;
         let currentIdx = 0;
         let currentAnimDist = 0; 
@@ -179,10 +181,10 @@
         let animationFrameId = null; 
         let is3DMode = true; 
         let poisVisible = true;
+
         let smoothLat = null; let smoothLon = null; let smoothBearing = null; let smoothPitch = 65;
         let mediaRecorder = null; let recordedChunks = []; let isRecording = false;
         let videoMimeType = 'video/webm;codecs=vp9'; let videoExt = 'webm';
-        let elevationChart = null; 
 
         function checkVideoFormatSupport() {
             if (MediaRecorder.isTypeSupported('video/mp4;codecs=avc1')) { videoMimeType = 'video/mp4;codecs=avc1'; videoExt = 'mp4'; } 
@@ -224,6 +226,67 @@
             return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
         }
 
+        // KRESLENÍ HUD PROFILU (Slabá čára ve videu)
+        function drawHUDProfile() {
+            const container = document.getElementById('hud-profile-container');
+            if (!gpxtrackData.length || !document.getElementById('showProfile').checked) {
+                container.style.opacity = '0';
+                return;
+            }
+            container.style.display = 'block';
+            container.style.opacity = '1';
+
+            const canvas = document.getElementById('profileCanvas');
+            const ctx = canvas.getContext('2d');
+            const W = canvas.width; const H = canvas.height;
+
+            ctx.clearRect(0, 0, W, H);
+
+            let minE = Infinity, maxE = -Infinity;
+            gpxtrackData.forEach(p => { if(p.ele < minE) minE = p.ele; if(p.ele > maxE) maxE = p.ele; });
+            const range = maxE - minE || 1;
+
+            // 1. ZÁKLADNÍ SLABÁ BÍLÁ ČÁRA CELÉ TRASY
+            ctx.beginPath();
+            gpxtrackData.forEach((p, i) => {
+                const x = (p.dist / totalTrackDistance) * W;
+                const y = H - ((p.ele - minE) / range) * (H * 0.8) - 10;
+                if(i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+            });
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+            ctx.lineWidth = 6;
+            ctx.lineJoin = 'round';
+            ctx.stroke();
+
+            // 2. ORANŽOVÁ ČÁRA DOSAVADNÍHO POSTUPU
+            const activeData = gpxtrackData.slice(0, Math.floor(currentIdx) + 1);
+            if (activeData.length > 0) {
+                ctx.beginPath();
+                activeData.forEach((p, i) => {
+                    const x = (p.dist / totalTrackDistance) * W;
+                    const y = H - ((p.ele - minE) / range) * (H * 0.8) - 10;
+                    if(i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+                });
+                ctx.strokeStyle = 'rgba(245, 158, 11, 0.9)'; // Amber barva
+                ctx.lineWidth = 6;
+                ctx.stroke();
+
+                // 3. ZÁŘÍCÍ TEČKA NA AKTUÁLNÍ POZICI
+                const last = activeData[activeData.length - 1];
+                const dx = (last.dist / totalTrackDistance) * W;
+                const dy = H - ((last.ele - minE) / range) * (H * 0.8) - 10;
+                
+                ctx.beginPath();
+                ctx.arc(dx, dy, 12, 0, Math.PI*2);
+                ctx.fillStyle = '#ffffff';
+                ctx.fill();
+                ctx.lineWidth = 4;
+                ctx.strokeStyle = '#ea580c';
+                ctx.stroke();
+            }
+        }
+
+        // SPRÁVNÝ FORMÁT FETCH REQUESTU PRO OVERPASS API (Zabraňuje chybě na GitHubu)
         async function fetchAndDisplayPOIs(pts) {
             if(pts.length === 0) return;
             const btn = document.getElementById('togglePois');
@@ -238,7 +301,15 @@
             const query = `[out:json][timeout:15];(node["natural"="peak"](${minLat-margin},${minLon-margin},${maxLat+margin},${maxLon+margin});node["place"~"village|town|city"](${minLat-margin},${minLon-margin},${maxLat+margin},${maxLon+margin}););out body;`;
 
             try {
-                const res = await fetch("https://overpass-api.de/api/interpreter", { method: "POST", body: query });
+                // OPRAVA: HTTP hlavička form-urlencoded pro maximální kompatibilitu
+                const res = await fetch("https://overpass-api.de/api/interpreter", { 
+                    method: "POST", 
+                    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                    body: "data=" + encodeURIComponent(query) 
+                });
+                
+                if (!res.ok) throw new Error("API Server error");
+                
                 const data = await res.json();
                 const features = data.elements.filter(e => e.tags && e.tags.name).map(e => ({
                     type: "Feature", geometry: { type: "Point", coordinates: [e.lon, e.lat] },
@@ -255,31 +326,10 @@
                 btn.className = "bg-emerald-600 text-white border border-emerald-500 text-[11px] font-bold py-1.5 rounded-lg shadow-md transition-all";
                 poisVisible = true;
             } catch (err) {
-                console.warn("POI API Blocked or Network Error.");
-                btn.innerText = "Zobrazeno OFF (Lokální běh)";
-                btn.className = "bg-slate-800 border border-slate-700 text-slate-500 text-[11px] font-bold py-1.5 rounded-lg transition-all cursor-not-allowed";
-                btn.disabled = true;
+                console.warn("POI API Blocked or Network Error.", err);
+                btn.innerText = "Chyba sítě u OSM";
+                btn.className = "bg-slate-800 border border-slate-700 text-slate-500 text-[11px] font-bold py-1.5 rounded-lg transition-all";
             }
-        }
-
-        function renderElevationChart(pts) {
-            document.getElementById('chartContainer').classList.remove('hidden');
-            const ctx = document.getElementById('elevationChart').getContext('2d');
-            const step = Math.max(1, Math.floor(pts.length / 150));
-            const chartData = pts.filter((_, i) => i % step === 0);
-            
-            const labels = chartData.map(p => p.dist.toFixed(1) + ' km');
-            const data = chartData.map(p => p.ele);
-
-            if (elevationChart) { elevationChart.destroy(); }
-            let gradient = ctx.createLinearGradient(0, 0, 0, 150);
-            gradient.addColorStop(0, 'rgba(245, 158, 11, 0.4)');
-            gradient.addColorStop(1, 'rgba(245, 158, 11, 0)');
-
-            elevationChart = new Chart(ctx, {
-                type: 'line', data: { labels: labels, datasets: [{ data: data, borderColor: '#fbbf24', backgroundColor: gradient, borderWidth: 2, fill: true, pointRadius: 0, pointHoverRadius: 0, tension: 0.2 }] },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { enabled: false } }, scales: { x: { display: true, ticks: { color: '#64748b', maxTicksLimit: 8 }, grid: { display: false } }, y: { display: true, ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' } } } }
-            });
         }
 
         function addRouteToMap() {
@@ -288,16 +338,24 @@
             }
             const fullCoords = gpxtrackData.map(p => [p.lon, p.lat]);
             map.addSource('route-full-src', { type: 'geojson', lineMetrics: true, data: { type: 'Feature', geometry: { type: 'LineString', coordinates: fullCoords } } });
-            map.addLayer({ id: 'route-glow', type: 'line', source: 'route-full-src', paint: { 'line-width': 16, 'line-opacity': 0.6, 'line-blur': 8, 'line-gradient': ['step', ['line-progress'], '#f97316', 0.0001, 'rgba(0,0,0,0)'] } });
-            map.addLayer({ id: 'route-line', type: 'line', source: 'route-full-src', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-width': 5, 'line-gradient': ['step', ['line-progress'], '#fbbf24', 0.0001, 'rgba(0,0,0,0)'] } });
+            
+            map.addLayer({ 
+                id: 'route-glow', type: 'line', source: 'route-full-src', 
+                paint: { 'line-width': 16, 'line-opacity': 0.6, 'line-blur': 8, 'line-gradient': ['step', ['line-progress'], '#f97316', 0.0001, 'rgba(0,0,0,0)'] } 
+            });
+            map.addLayer({ 
+                id: 'route-line', type: 'line', source: 'route-full-src', layout: { 'line-join': 'round', 'line-cap': 'round' }, 
+                paint: { 'line-width': 5, 'line-gradient': ['step', ['line-progress'], '#fbbf24', 0.0001, 'rgba(0,0,0,0)'] } 
+            });
         }
 
         async function cinematicStart() {
-            if (gpxtrackData.length === 0) return;
+            if (gpxtrackData.length === 0) { alert("Prosím, nejprve nahraj GPX trasu."); return; }
             isPlaying = true; updatePlayUI();
             
             document.getElementById('hud-title').style.display = 'block';
             document.getElementById('hud-stats').style.display = 'flex';
+            drawHUDProfile(); // Spustit první vykreslení HUD grafu
             
             currentIdx = 0; currentAnimDist = 0; 
             smoothLat = gpxtrackData[0].lat; smoothLon = gpxtrackData[0].lon;
@@ -338,9 +396,14 @@
             const exactLon = pt.lon + (nextPt.lon - pt.lon) * fraction;
             const exactDist = pt.dist + (nextPt.dist - pt.dist) * fraction;
 
+            // Update statistik
             document.getElementById('hudDist').innerHTML = exactDist.toFixed(1) + '<span class="text-2xl text-slate-300 ml-1">km</span>';
             document.getElementById('hudEle').innerHTML = Math.round(pt.ele + (nextPt.ele - pt.ele) * fraction) + '<span class="text-2xl text-slate-300 ml-1">m</span>';
 
+            // Kreslení HUD profilu na obrazovce
+            drawHUDProfile();
+
+            // Kreslení čáry na mapě
             let lineProgress = Math.max(0.0001, Math.min(1, exactDist / totalTrackDistance));
             map.setPaintProperty('route-glow', 'line-gradient', ['step', ['line-progress'], '#f97316', lineProgress, 'rgba(0,0,0,0)']);
             map.setPaintProperty('route-line', 'line-gradient', ['step', ['line-progress'], '#fbbf24', lineProgress, 'rgba(0,0,0,0)']);
@@ -356,8 +419,16 @@
             animationFrameId = requestAnimationFrame(gameLoop);
         }
 
-        function stopFlyover() { isPlaying = false; if (animationFrameId) { cancelAnimationFrame(animationFrameId); animationFrameId = null; } updatePlayUI(); }
-        function updatePlayUI() { document.getElementById('playIcon').innerText = isPlaying ? "⏸" : "▶"; document.getElementById('playText').innerText = isPlaying ? "Pozastavit let" : "Odstartovat let"; }
+        function stopFlyover() {
+            isPlaying = false;
+            if (animationFrameId) { cancelAnimationFrame(animationFrameId); animationFrameId = null; }
+            updatePlayUI();
+        }
+
+        function updatePlayUI() {
+            document.getElementById('playIcon').innerText = isPlaying ? "⏸" : "▶";
+            document.getElementById('playText').innerText = isPlaying ? "Pozastavit let" : "Odstartovat let";
+        }
 
         async function startRecording() {
             if (isRecording) return;
@@ -380,6 +451,7 @@
                     isRecording = false;
                     document.getElementById('btnRecord').classList.replace('bg-slate-800', 'bg-red-600');
                     document.getElementById('recordText').innerText = "Nahrát video (Bez UI)";
+                    
                     mapWrapper.classList.remove('recording-mode');
                     setTimeout(() => map.resize(), 300);
 
@@ -394,18 +466,21 @@
 
                 mediaRecorder.start();
                 setTimeout(() => { cinematicStart(); }, 600);
-            } catch (err) { console.error(err); document.getElementById('map-wrapper').classList.remove('recording-mode'); map.resize(); }
+            } catch (err) {
+                console.error(err);
+                document.getElementById('map-wrapper').classList.remove('recording-mode');
+                map.resize();
+            }
         }
 
         function stopRecording() { if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop(); }
 
-        // BEZPEČNÝ GPX PARSER (S ochranou a logováním chyb)
         function safeParseGPX(xmlText, fileName) {
             try {
                 const xml = new DOMParser().parseFromString(xmlText, 'text/xml');
                 const trkpts = xml.getElementsByTagName('trkpt');
                 if (!trkpts || trkpts.length === 0) {
-                    alert("Tento GPX soubor neobsahuje žádnou trasu (chybí <trkpt> body)."); return;
+                    alert("Tento GPX soubor neobsahuje žádnou trasu."); return;
                 }
 
                 let pts = [], dist = 0;
@@ -424,11 +499,7 @@
                 if(pts.length < 2) { alert("Trasa je příliš krátká."); return; }
                 loadGPXData(pts, dist, fileName.replace('.gpx', '').toUpperCase());
                 document.getElementById('dropzoneText').innerText = `✅ Načteno: ${pts.length} bodů`;
-                document.getElementById('dropzone').classList.remove('border-amber-500');
-            } catch(e) { 
-                console.error("Chyba při čtení GPX:", e);
-                alert("Nepodařilo se přečíst GPX soubor. Možná má špatný formát."); 
-            }
+            } catch(e) { alert("Nepodařilo se přečíst GPX soubor."); }
         }
 
         function loadGPXData(pts, dist, routeName) {
@@ -448,7 +519,7 @@
             document.getElementById('hudEle').innerHTML = Math.round(pts[0].ele) + '<span class="text-2xl text-slate-300 ml-1">m</span>';
 
             addRouteToMap();
-            try { renderElevationChart(pts); } catch(e) { console.error("Graf se nepodařilo načíst:", e); }
+            drawHUDProfile(); // Vykreslí prázdnou trasu jako přípravu
             map.jumpTo({ center: [pts[0].lon, pts[0].lat], zoom: 12, pitch: 0 });
             
             fetchAndDisplayPOIs(pts);
@@ -461,7 +532,6 @@
             const dropzone = document.getElementById('dropzone');
             const fileInput = document.getElementById('fileInput');
 
-            // KLIKNUTÍ PRO NAHRÁNÍ
             dropzone.addEventListener('click', () => fileInput.click());
             fileInput.addEventListener('change', (e) => {
                 if (e.target.files.length > 0) {
@@ -471,7 +541,6 @@
                 }
             });
 
-            // DRAG & DROP PRO NAHRÁNÍ (Opraveno)
             dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('border-amber-500'); });
             dropzone.addEventListener('dragleave', (e) => { e.preventDefault(); dropzone.classList.remove('border-amber-500'); });
             dropzone.addEventListener('drop', (e) => {
@@ -525,6 +594,7 @@
                 e.target.className = poisVisible ? "bg-emerald-600 text-white border border-emerald-500 text-[11px] font-bold py-1.5 rounded-lg shadow-md transition-all" : "bg-slate-700 text-slate-400 text-[11px] font-bold py-1.5 rounded-lg transition-all";
             });
 
+            document.getElementById('showProfile').addEventListener('change', drawHUDProfile);
             document.getElementById('speedSelector').addEventListener('change', (e) => speedFactor = parseInt(e.target.value));
             document.getElementById('btnPlay').addEventListener('click', () => { if(isPlaying) stopFlyover(); else cinematicStart(); });
             document.getElementById('btnRecord').addEventListener('click', () => { if(isRecording) stopRecording(); else startRecording(); });
