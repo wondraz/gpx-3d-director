@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GPX 3D Trail Director V14 - Dynamic Elevation</title>
+    <title>GPX 3D Trail Director V15</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/maplibre-gl@4.3.2/dist/maplibre-gl.js"></script>
     <link href="https://unpkg.com/maplibre-gl@4.3.2/dist/maplibre-gl.css" rel="stylesheet" />
@@ -40,7 +40,7 @@
                 </div>
                 <div>
                     <h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
-                        GPX 3D Trail Director <span class="bg-blue-500/10 text-blue-400 text-[10px] px-2.5 py-0.5 rounded-full uppercase font-extrabold border border-blue-500/30">V14 PRO</span>
+                        GPX 3D Trail Director <span class="bg-blue-500/10 text-blue-400 text-[10px] px-2.5 py-0.5 rounded-full uppercase font-extrabold border border-blue-500/30">V15</span>
                     </h1>
                 </div>
             </div>
@@ -65,11 +65,12 @@
             
             <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl">
                 <h2 class="font-bold text-slate-400 mb-2 text-xs uppercase tracking-wider">1. Trasa a Název</h2>
+                
                 <div id="dropzone" class="border-2 border-dashed border-slate-700 hover:border-amber-500 rounded-xl p-6 text-center cursor-pointer transition-all bg-slate-950/50 mb-3 flex flex-col items-center justify-center">
-                    <input type="file" id="fileInput" accept=".gpx" class="hidden" />
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-slate-500 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
                     <p class="text-xs font-semibold text-slate-300" id="dropzoneText">Klikni nebo přetáhni .GPX</p>
                 </div>
+                
                 <div id="nameInputWrapper" style="display:none; opacity:0; transition: opacity 0.4s;">
                     <label class="text-[10px] text-slate-500 uppercase font-bold tracking-wider block mb-1">Název ve videu (smaž pro skrytí):</label>
                     <input type="text" id="customRouteName" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white font-bold outline-none focus:border-amber-500 transition-all" />
@@ -176,6 +177,14 @@
         </div>
     </main>
 
+    <footer class="w-full py-6 mt-8 border-t border-slate-900 bg-slate-950 text-center">
+        <p class="text-xs text-slate-500 uppercase tracking-widest font-semibold">
+            Vytvořil <span class="text-amber-500 font-black">Wondraz</span> © 2024
+        </p>
+    </footer>
+
+    <input type="file" id="fileInput" accept=".gpx" style="display:none;" />
+
     <script>
         let map;
         let gpxtrackData = []; 
@@ -224,377 +233,4 @@
         function getBearing(lat1, lon1, lat2, lon2) {
             const dLon = (lon2 - lon1) * Math.PI / 180;
             const y = Math.sin(dLon) * Math.cos(lat2 * Math.PI / 180);
-            const x = Math.cos(lat1 * Math.PI / 180) * Math.sin(lat2 * Math.PI / 180) - Math.sin(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.cos(dLon);
-            return ((Math.atan2(y, x) * 180 / Math.PI) + 360) % 360;
-        }
-
-        function calculateDistance(lat1, lon1, lat2, lon2) {
-            const R = 6371, dLat = (lat2 - lat1) * Math.PI / 180, dLon = (lon2 - lon1) * Math.PI / 180;
-            const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
-            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-        }
-
-        function drawHUDProfile() {
-            const container = document.getElementById('hud-profile-container');
-            if (!gpxtrackData.length || !document.getElementById('showProfile').checked) {
-                container.style.opacity = '0';
-                return;
-            }
-            container.style.display = 'block';
-            container.style.opacity = '1';
-
-            const canvas = document.getElementById('profileCanvas');
-            const ctx = canvas.getContext('2d');
-            const W = canvas.width; const H = canvas.height;
-            ctx.clearRect(0, 0, W, H);
-
-            let minE = Infinity, maxE = -Infinity;
-            gpxtrackData.forEach(p => { if(p.ele < minE) minE = p.ele; if(p.ele > maxE) maxE = p.ele; });
-            const range = maxE - minE || 1;
-
-            ctx.beginPath();
-            gpxtrackData.forEach((p, i) => {
-                const x = (p.dist / totalTrackDistance) * W;
-                const y = H - ((p.ele - minE) / range) * (H * 0.8) - 10;
-                if(i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-            });
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
-            ctx.lineWidth = 6; ctx.lineJoin = 'round'; ctx.stroke();
-
-            const activeData = gpxtrackData.slice(0, Math.floor(currentIdx) + 1);
-            if (activeData.length > 0) {
-                ctx.beginPath();
-                activeData.forEach((p, i) => {
-                    const x = (p.dist / totalTrackDistance) * W;
-                    const y = H - ((p.ele - minE) / range) * (H * 0.8) - 10;
-                    if(i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-                });
-                ctx.strokeStyle = 'rgba(245, 158, 11, 0.9)';
-                ctx.lineWidth = 6; ctx.stroke();
-
-                const last = activeData[activeData.length - 1];
-                const dx = (last.dist / totalTrackDistance) * W;
-                const dy = H - ((last.ele - minE) / range) * (H * 0.8) - 10;
-                
-                ctx.beginPath();
-                ctx.arc(dx, dy, 12, 0, Math.PI*2);
-                ctx.fillStyle = '#ffffff'; ctx.fill();
-                ctx.lineWidth = 4; ctx.strokeStyle = '#ea580c'; ctx.stroke();
-            }
-        }
-
-        async function fetchAndDisplayPOIs(pts) {
-            if(pts.length === 0) return;
-            const btn = document.getElementById('togglePois');
-            btn.innerText = "Hledám vrcholy...";
-            
-            let minLat = 90, maxLat = -90, minLon = 180, maxLon = -180;
-            pts.forEach(p => {
-                if(p.lat < minLat) minLat = p.lat; if(p.lat > maxLat) maxLat = p.lat;
-                if(p.lon < minLon) minLon = p.lon; if(p.lon > maxLon) maxLon = p.lon;
-            });
-            const margin = 0.08; 
-            const query = `[out:json][timeout:15];(node["natural"="peak"](${minLat-margin},${minLon-margin},${maxLat+margin},${maxLon+margin});node["place"~"village|town|city"](${minLat-margin},${minLon-margin},${maxLat+margin},${maxLon+margin}););out body;`;
-
-            try {
-                const res = await fetch("https://overpass-api.de/api/interpreter", { 
-                    method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: "data=" + encodeURIComponent(query) 
-                });
-                if (!res.ok) throw new Error("API Server error");
-                
-                const data = await res.json();
-                const features = data.elements.filter(e => e.tags && e.tags.name).map(e => ({
-                    type: "Feature", geometry: { type: "Point", coordinates: [e.lon, e.lat] },
-                    properties: { name: e.tags.name, type: e.tags.natural === "peak" ? "peak" : "place", ele: e.tags.ele || "" }
-                }));
-
-                if (map.getSource('pois')) map.getSource('pois').setData({type: "FeatureCollection", features});
-                else {
-                    map.addSource('pois', { type: 'geojson', data: {type: "FeatureCollection", features} });
-                    map.addLayer({ id: 'poi-peaks', type: 'symbol', source: 'pois', filter: ['==', 'type', 'peak'], layout: { 'text-field': ['concat', '▲ ', ['get', 'name'], '\n', ['get', 'ele'], ' m'], 'text-size': 13, 'text-anchor': 'bottom', 'text-offset': [0, -1], 'symbol-placement': 'point' }, paint: { 'text-color': '#fbbf24', 'text-halo-color': 'rgba(0,0,0,0.85)', 'text-halo-width': 2 } });
-                    map.addLayer({ id: 'poi-places', type: 'symbol', source: 'pois', filter: ['==', 'type', 'place'], layout: { 'text-field': ['get', 'name'], 'text-size': 15, 'text-anchor': 'center', 'text-offset': [0, 1] }, paint: { 'text-color': '#ffffff', 'text-halo-color': 'rgba(0,0,0,0.85)', 'text-halo-width': 2 } });
-                }
-                btn.innerText = "Zobrazeno ON";
-                btn.className = "bg-emerald-600 text-white border border-emerald-500 text-[11px] font-bold py-1.5 rounded-lg shadow-md transition-all";
-                poisVisible = true;
-            } catch (err) {
-                console.warn("POI API Blocked or Network Error.");
-                btn.innerText = "Chyba sítě u OSM";
-                btn.className = "bg-slate-800 border border-slate-700 text-slate-500 text-[11px] font-bold py-1.5 rounded-lg transition-all";
-            }
-        }
-
-        function addRouteToMap() {
-            if (map.getSource('route-full-src')) {
-                map.removeLayer('route-glow'); map.removeLayer('route-line'); map.removeSource('route-full-src');
-            }
-            const fullCoords = gpxtrackData.map(p => [p.lon, p.lat]);
-            map.addSource('route-full-src', { type: 'geojson', lineMetrics: true, data: { type: 'Feature', geometry: { type: 'LineString', coordinates: fullCoords } } });
-            
-            map.addLayer({ 
-                id: 'route-glow', type: 'line', source: 'route-full-src', 
-                paint: { 'line-width': 16, 'line-opacity': 0.6, 'line-blur': 8, 'line-gradient': ['step', ['line-progress'], '#f97316', 0.0001, 'rgba(0,0,0,0)'] } 
-            });
-            map.addLayer({ 
-                id: 'route-line', type: 'line', source: 'route-full-src', layout: { 'line-join': 'round', 'line-cap': 'round' }, 
-                paint: { 'line-width': 5, 'line-gradient': ['step', ['line-progress'], '#fbbf24', 0.0001, 'rgba(0,0,0,0)'] } 
-            });
-        }
-
-        async function cinematicStart() {
-            if (gpxtrackData.length === 0) { alert("Prosím, nejprve nahraj GPX trasu."); return; }
-            isPlaying = true; updatePlayUI();
-            
-            document.getElementById('hud-title').style.display = 'block';
-            document.getElementById('hud-stats').style.display = 'flex';
-            drawHUDProfile();
-            
-            currentIdx = 0; currentAnimDist = 0; 
-            smoothLat = gpxtrackData[0].lat; smoothLon = gpxtrackData[0].lon;
-            smoothBearing = gpxtrackData.length > 1 ? getBearing(smoothLat, smoothLon, gpxtrackData[1].lat, gpxtrackData[1].lon) : 0;
-            
-            map.setPaintProperty('route-glow', 'line-gradient', ['step', ['line-progress'], '#f97316', 0.0001, 'rgba(0,0,0,0)']);
-            map.setPaintProperty('route-line', 'line-gradient', ['step', ['line-progress'], '#fbbf24', 0.0001, 'rgba(0,0,0,0)']);
-
-            map.jumpTo({ center: [gpxtrackData[0].lon, gpxtrackData[0].lat], zoom: 12, pitch: 30, bearing: 0 });
-            await new Promise(r => setTimeout(r, 400));
-            
-            if (!isPlaying) return;
-            map.flyTo({ center: [gpxtrackData[0].lon, gpxtrackData[0].lat], zoom: 14.5, pitch: 65, bearing: smoothBearing, duration: 1800, essential: true });
-            await new Promise(r => setTimeout(r, 1900));
-            if (!isPlaying) return;
-
-            animationFrameId = requestAnimationFrame(gameLoop);
-        }
-
-        function gameLoop() {
-            if (!isPlaying) return;
-
-            if (document.getElementById('ignoreSpeed').checked) {
-                let kmPerFrame = 0.00045 * speedFactor; currentAnimDist += kmPerFrame;
-                if (currentAnimDist >= totalTrackDistance) currentIdx = gpxtrackData.length - 1;
-                else {
-                    let intId = 0;
-                    while (intId < gpxtrackData.length - 1 && gpxtrackData[intId+1].dist < currentAnimDist) intId++;
-                    let denom = gpxtrackData[intId+1].dist - gpxtrackData[intId].dist;
-                    currentIdx = intId + (denom > 0 ? (currentAnimDist - gpxtrackData[intId].dist) / denom : 0);
-                }
-            } else currentIdx += (speedFactor * 0.015);
-
-            if (currentIdx >= gpxtrackData.length - 1) { stopFlyover(); if (isRecording) stopRecording(); return; }
-
-            const fraction = currentIdx % 1, pt = gpxtrackData[Math.floor(currentIdx)], nextPt = gpxtrackData[Math.floor(currentIdx) + 1];
-            const exactLat = pt.lat + (nextPt.lat - pt.lat) * fraction;
-            const exactLon = pt.lon + (nextPt.lon - pt.lon) * fraction;
-            const exactDist = pt.dist + (nextPt.dist - pt.dist) * fraction;
-            const exactEleGain = pt.eleGain + (nextPt.eleGain - pt.eleGain) * fraction;
-
-            document.getElementById('hudDist').innerHTML = exactDist.toFixed(1) + '<span class="text-2xl text-slate-300 ml-1">km</span>';
-            document.getElementById('hudEle').innerHTML = Math.round(pt.ele + (nextPt.ele - pt.ele) * fraction) + '<span class="text-2xl text-slate-300 ml-1">m</span>';
-            
-            // DYNAMICKÁ AKTUALIZACE NASTOUPANÝCH METRŮ
-            document.getElementById('eleGainVal').innerText = Math.round(exactEleGain) + " m";
-
-            drawHUDProfile();
-
-            let lineProgress = Math.max(0.0001, Math.min(1, exactDist / totalTrackDistance));
-            map.setPaintProperty('route-glow', 'line-gradient', ['step', ['line-progress'], '#f97316', lineProgress, 'rgba(0,0,0,0)']);
-            map.setPaintProperty('route-line', 'line-gradient', ['step', ['line-progress'], '#fbbf24', lineProgress, 'rgba(0,0,0,0)']);
-
-            let lookAheadIdx = Math.min(Math.floor(currentIdx) + speedFactor * 3, gpxtrackData.length - 1);
-            let targetBearing = getBearing(exactLat, exactLon, gpxtrackData[lookAheadIdx].lat, gpxtrackData[lookAheadIdx].lon);
-
-            smoothLat += (exactLat - smoothLat) * 0.08; smoothLon += (exactLon - smoothLon) * 0.08;
-            let diff = targetBearing - smoothBearing; while (diff < -180) diff += 360; while (diff > 180) diff -= 360;
-            smoothBearing += diff * 0.04; smoothPitch += (65 - smoothPitch) * 0.08;
-
-            map.jumpTo({ center: [smoothLon, smoothLat], bearing: smoothBearing, pitch: smoothPitch, zoom: 14.5 });
-            animationFrameId = requestAnimationFrame(gameLoop);
-        }
-
-        function stopFlyover() {
-            isPlaying = false;
-            if (animationFrameId) { cancelAnimationFrame(animationFrameId); animationFrameId = null; }
-            updatePlayUI();
-        }
-
-        function updatePlayUI() {
-            document.getElementById('playIcon').innerText = isPlaying ? "⏸" : "▶";
-            document.getElementById('playText').innerText = isPlaying ? "Pozastavit let" : "Odstartovat let";
-        }
-
-        async function startRecording() {
-            if (isRecording) return;
-            try {
-                stopFlyover();
-                const mapWrapper = document.getElementById('map-wrapper');
-                mapWrapper.classList.add('recording-mode');
-                map.resize();
-                await new Promise(r => setTimeout(r, 500));
-
-                const stream = await navigator.mediaDevices.getDisplayMedia({ video: { displaySurface: "browser", frameRate: 60 }, audio: false, preferCurrentTab: true });
-                recordedChunks = []; isRecording = true;
-                
-                document.getElementById('btnRecord').classList.replace('bg-red-600', 'bg-slate-800');
-                document.getElementById('recordText').innerText = "Nahrávám čisté video (Klikni pro stop)...";
-
-                mediaRecorder = new MediaRecorder(stream, { mimeType: videoMimeType, videoBitsPerSecond: 14000000 });
-                mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); };
-                mediaRecorder.onstop = () => {
-                    isRecording = false;
-                    document.getElementById('btnRecord').classList.replace('bg-slate-800', 'bg-red-600');
-                    document.getElementById('recordText').innerText = "Nahrát video (Bez UI)";
-                    
-                    mapWrapper.classList.remove('recording-mode');
-                    setTimeout(() => map.resize(), 300);
-
-                    const blob = new Blob(recordedChunks, { type: videoMimeType });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a'); a.style.display = 'none'; a.href = url;
-                    
-                    const userFileName = document.getElementById('customRouteName').value.trim();
-                    a.download = `${userFileName ? userFileName : '3D-Trail'}.${videoExt}`;
-                    
-                    document.body.appendChild(a); a.click();
-                    setTimeout(() => { document.body.removeChild(a); window.URL.revokeObjectURL(url); }, 100);
-                    stream.getTracks().forEach(track => track.stop());
-                };
-
-                mediaRecorder.start();
-                setTimeout(() => { cinematicStart(); }, 600);
-            } catch (err) {
-                console.error(err);
-                document.getElementById('map-wrapper').classList.remove('recording-mode');
-                map.resize();
-            }
-        }
-
-        function stopRecording() { if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop(); }
-
-        function safeParseGPX(xmlText, fileName) {
-            try {
-                const xml = new DOMParser().parseFromString(xmlText, 'text/xml');
-                const trkpts = xml.getElementsByTagName('trkpt');
-                if (!trkpts || trkpts.length === 0) { alert("Tento GPX soubor neobsahuje žádnou trasu."); return; }
-
-                let pts = [], dist = 0, eleGain = 0;
-                for (let i = 0; i < trkpts.length; i++) {
-                    const latNode = trkpts[i].getAttribute('lat'), lonNode = trkpts[i].getAttribute('lon');
-                    if(!latNode || !lonNode) continue; 
-                    const lat = parseFloat(latNode), lon = parseFloat(lonNode);
-                    const eleNode = trkpts[i].getElementsByTagName('ele')[0];
-                    let ele = eleNode && eleNode.textContent ? parseFloat(eleNode.textContent) : 0;
-                    if(isNaN(ele)) ele = 0;
-
-                    if (pts.length > 0) {
-                        dist += calculateDistance(pts[pts.length-1].lat, pts[pts.length-1].lon, lat, lon);
-                        const eleDiff = ele - pts[pts.length-1].ele;
-                        if(eleDiff > 0) eleGain += eleDiff;
-                    }
-                    // NOVINKA: Každý bod si pamatuje aktuální nastoupané metry
-                    pts.push({ lat, lon, ele, dist, eleGain });
-                }
-                
-                if(pts.length < 2) { alert("Trasa je příliš krátká."); return; }
-                totalElevationGain = Math.round(eleGain);
-                
-                const cleanName = fileName.replace(/\.[^/.]+$/, "");
-                loadGPXData(pts, dist, cleanName.toUpperCase());
-                
-                document.getElementById('dropzoneText').innerText = `✅ Načteno: ${pts.length} bodů`;
-            } catch(e) { alert("Nepodařilo se přečíst GPX soubor."); }
-        }
-
-        function loadGPXData(pts, dist, routeName) {
-            gpxtrackData = pts; totalTrackDistance = dist;
-            
-            document.getElementById('routeNameHud').innerText = routeName;
-            document.getElementById('customRouteName').value = routeName;
-            
-            document.getElementById('hudTitleUnderline').style.display = routeName.trim() ? 'block' : 'none';
-            
-            document.getElementById('eleGainVal').innerText = "0 m";
-            document.getElementById('hudElevationGain').style.display = document.getElementById('showEleGain').checked ? 'block' : 'none';
-            
-            document.getElementById('nameInputWrapper').style.display = "block";
-            setTimeout(() => { document.getElementById('nameInputWrapper').style.opacity = "1"; }, 50);
-
-            document.getElementById('animationControls').style.opacity = "1";
-            document.getElementById('animationControls').style.pointerEvents = "auto";
-            
-            document.getElementById('hud-title').style.display = 'block';
-            document.getElementById('hud-stats').style.display = 'flex';
-            document.getElementById('hudDist').innerHTML = '0.0<span class="text-2xl text-slate-300 ml-1">km</span>';
-            document.getElementById('hudEle').innerHTML = Math.round(pts[0].ele) + '<span class="text-2xl text-slate-300 ml-1">m</span>';
-
-            addRouteToMap();
-            drawHUDProfile(); 
-            map.jumpTo({ center: [pts[0].lon, pts[0].lat], zoom: 12, pitch: 0 });
-            
-            fetchAndDisplayPOIs(pts);
-        }
-
-        window.addEventListener('load', () => {
-            checkVideoFormatSupport();
-            initMap();
-
-            const dropzone = document.getElementById('dropzone');
-            const fileInput = document.getElementById('fileInput');
-
-            dropzone.addEventListener('click', () => fileInput.click());
-            fileInput.addEventListener('change', (e) => {
-                if (e.target.files.length > 0) {
-                    const file = e.target.files[0]; const reader = new FileReader();
-                    reader.onload = (ev) => safeParseGPX(ev.target.result, file.name);
-                    reader.readAsText(file);
-                }
-            });
-
-            dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('border-amber-500'); });
-            dropzone.addEventListener('dragleave', (e) => { e.preventDefault(); dropzone.classList.remove('border-amber-500'); });
-            dropzone.addEventListener('drop', (e) => {
-                e.preventDefault();
-                dropzone.classList.remove('border-amber-500');
-                if (e.dataTransfer.files.length > 0) {
-                    const file = e.dataTransfer.files[0];
-                    if(!file.name.toLowerCase().endsWith('.gpx')) { alert("Lze nahrát pouze .GPX soubory!"); return; }
-                    const reader = new FileReader();
-                    reader.onload = (ev) => safeParseGPX(ev.target.result, file.name);
-                    reader.readAsText(file);
-                }
-            });
-
-            document.getElementById('customRouteName').addEventListener('input', (e) => {
-                const val = e.target.value.trim().toUpperCase();
-                document.getElementById('routeNameHud').innerText = val;
-                document.getElementById('hudTitleUnderline').style.display = val ? 'block' : 'none';
-            });
-
-            document.getElementById('btnSample').addEventListener('click', () => {
-                let pts = [], dist = 0, eleGain = 0; const sLat = 50.7294, sLon = 15.7292;
-                for (let i = 0; i <= 240; i++) {
-                    const r = i / 240;
-                    const lat = sLat + (50.7360 - sLat)*r + Math.sin(r*Math.PI*3.5)*0.003;
-                    const lon = sLon + (15.7401 - sLon)*r + Math.cos(r*Math.PI*2.5)*0.005;
-                    const ele = 760 + (1603 - 760)*r + Math.sin(r*Math.PI*6)*45;
-                    if (i>0) {
-                        dist += calculateDistance(pts[i-1].lat, pts[i-1].lon, lat, lon);
-                        const diff = ele - pts[i-1].ele;
-                        if(diff > 0) eleGain += diff;
-                    }
-                    pts.push({ lat, lon, ele, dist, eleGain });
-                }
-                totalElevationGain = Math.round(eleGain);
-                loadGPXData(pts, dist, "VÝŠLAP NA SNĚŽKU 🏔️");
-            });
-
-            document.getElementById('styleSat').addEventListener('click', (e) => {
-                map.setLayoutProperty('satellite-layer', 'visibility', 'visible'); map.setLayoutProperty('topo-layer', 'visibility', 'none');
-                e.target.className = "flex-1 bg-amber-600 text-white text-[11px] font-bold py-1.5 rounded-md transition-all shadow-md";
-                document.getElementById('styleTopo').className = "flex-1 text-slate-400 text-[11px] font-bold py-1.5 rounded-md hover:text-white transition-all";
-            });
-
-            document.getElementById('styleTopo').addEventListener('click', (e) => {
-                map.setLayoutProperty('satellite-layer', 'visibility', 'none'); map.setLayoutProperty('topo-layer', 'visibility', 'visible');
-                e.target.className = "flex-1 bg-amber-600 text-white text-[11px] font-bold py-1.5 rounded-md transition-all shadow-md";
-                document.getElementById('styleSat').className = "flex-1 text-slate-400 text-[11px] font-bold py-1.5 rounded-md hover:text-white transition-all";
+            const x = Math.cos(lat1 * Math.PI / 180) * Math.sin(lat2 * Math.PI / 180) -
