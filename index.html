@@ -159,4 +159,472 @@
                 <div id="hud-stats" class="hud-overlay bottom-8 left-0 right-0 px-8 flex justify-between items-end" style="display:none">
                     <div class="flex gap-8 bg-black/60 p-5 rounded-3xl backdrop-blur-md border border-white/10 shadow-2xl">
                         <div>
-                            <span class="text-
+                            <span class="text-xs font-bold text-amber-400 uppercase tracking-widest block mb-0.5 opacity-90">Ujeta vzdálenost</span>
+                            <span class="text-5xl font-black text-white" id="hudDist">0.0<span class="text-2xl text-slate-300 ml-1">km</span></span>
+                        </div>
+                        <div class="border-l border-white/20 pl-8">
+                            <span class="text-xs font-bold text-amber-400 uppercase tracking-widest block mb-0.5 opacity-90">Nadm. výška</span>
+                            <span class="text-5xl font-black text-white" id="hudEle">0<span class="text-2xl text-slate-300 ml-1">m</span></span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="hud-overlay top-6 right-6 opacity-40">
+                    <span class="text-xs sm:text-sm font-black text-white tracking-widest uppercase">Trail Director <span class="text-amber-500">3D</span></span>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="w-full py-6 mt-auto border-t border-slate-900 bg-slate-950 text-center">
+        <p class="text-xs text-slate-500 uppercase tracking-widest font-semibold">
+            Vytvořil <span class="text-amber-500 font-black">Wondraz</span> © 2024
+        </p>
+    </footer>
+
+    <script>
+        let map;
+        let gpxtrackData = []; 
+        let totalTrackDistance = 0; 
+        let totalElevationGain = 0;
+
+        let isPlaying = false;
+        let currentIdx = 0;
+        let currentAnimDist = 0; 
+        let speedFactor = 16; 
+        let animationFrameId = null; 
+        let is3DMode = true; 
+        let poisVisible = true;
+
+        let smoothLat = null; let smoothLon = null; let smoothBearing = null; let smoothPitch = 65;
+        let mediaRecorder = null; let recordedChunks = []; let isRecording = false;
+        let videoMimeType = 'video/webm;codecs=vp9'; let videoExt = 'webm';
+
+        function checkVideoFormatSupport() {
+            if (MediaRecorder.isTypeSupported('video/mp4;codecs=avc1')) { videoMimeType = 'video/mp4;codecs=avc1'; videoExt = 'mp4'; } 
+            else if (MediaRecorder.isTypeSupported('video/mp4')) { videoMimeType = 'video/mp4'; videoExt = 'mp4'; } 
+            else { videoMimeType = 'video/webm;codecs=vp9'; videoExt = 'webm'; }
+        }
+
+        function initMap() {
+            map = new maplibregl.Map({
+                container: 'map',
+                style: {
+                    version: 8,
+                    sources: {
+                        'satellite': { type: 'raster', tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'], tileSize: 256 },
+                        'topo': { type: 'raster', tiles: ['https://a.tile.opentopomap.org/{z}/{x}/{y}.png'], tileSize: 256 },
+                        'terrainSource': { type: 'raster-dem', tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'], encoding: 'terrarium', tileSize: 256, maxzoom: 13 }
+                    },
+                    layers: [
+                        { id: 'topo-layer', type: 'raster', source: 'topo', layout: { visibility: 'none' } },
+                        { id: 'satellite-layer', type: 'raster', source: 'satellite', layout: { visibility: 'visible' } }
+                    ],
+                    terrain: { source: 'terrainSource', exaggeration: 1.8 } 
+                },
+                center: [15.732, 50.729], zoom: 12, pitch: 65, bearing: 0
+            });
+            map.setMaxPitch(85);
+        }
+
+        function getBearing(lat1, lon1, lat2, lon2) {
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const y = Math.sin(dLon) * Math.cos(lat2 * Math.PI / 180);
+            const x = Math.cos(lat1 * Math.PI / 180) * Math.sin(lat2 * Math.PI / 180) - Math.sin(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.cos(dLon);
+            return ((Math.atan2(y, x) * 180 / Math.PI) + 360) % 360;
+        }
+
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371, dLat = (lat2 - lat1) * Math.PI / 180, dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        }
+
+        function drawHUDProfile() {
+            const container = document.getElementById('hud-profile-container');
+            if (!gpxtrackData.length || !document.getElementById('showProfile').checked) {
+                container.style.opacity = '0';
+                return;
+            }
+            container.style.display = 'block';
+            container.style.opacity = '1';
+
+            const canvas = document.getElementById('profileCanvas');
+            const ctx = canvas.getContext('2d');
+            const W = canvas.width; const H = canvas.height;
+            ctx.clearRect(0, 0, W, H);
+
+            let minE = Infinity, maxE = -Infinity;
+            gpxtrackData.forEach(p => { if(p.ele < minE) minE = p.ele; if(p.ele > maxE) maxE = p.ele; });
+            const range = maxE - minE || 1;
+
+            ctx.beginPath();
+            gpxtrackData.forEach((p, i) => {
+                const x = (p.dist / totalTrackDistance) * W;
+                const y = H - ((p.ele - minE) / range) * (H * 0.8) - 10;
+                if(i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+            });
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+            ctx.lineWidth = 6; ctx.lineJoin = 'round'; ctx.stroke();
+
+            const activeData = gpxtrackData.slice(0, Math.floor(currentIdx) + 1);
+            if (activeData.length > 0) {
+                ctx.beginPath();
+                activeData.forEach((p, i) => {
+                    const x = (p.dist / totalTrackDistance) * W;
+                    const y = H - ((p.ele - minE) / range) * (H * 0.8) - 10;
+                    if(i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+                });
+                ctx.strokeStyle = 'rgba(245, 158, 11, 0.9)';
+                ctx.lineWidth = 6; ctx.stroke();
+
+                const last = activeData[activeData.length - 1];
+                const dx = (last.dist / totalTrackDistance) * W;
+                const dy = H - ((last.ele - minE) / range) * (H * 0.8) - 10;
+                
+                ctx.beginPath();
+                ctx.arc(dx, dy, 12, 0, Math.PI*2);
+                ctx.fillStyle = '#ffffff'; ctx.fill();
+                ctx.lineWidth = 4; ctx.strokeStyle = '#ea580c'; ctx.stroke();
+            }
+        }
+
+        async function fetchAndDisplayPOIs(pts) {
+            if(pts.length === 0) return;
+            const btn = document.getElementById('togglePois');
+            btn.innerText = "Hledám vrcholy...";
+            
+            let minLat = 90, maxLat = -90, minLon = 180, maxLon = -180;
+            pts.forEach(p => {
+                if(p.lat < minLat) minLat = p.lat; if(p.lat > maxLat) maxLat = p.lat;
+                if(p.lon < minLon) minLon = p.lon; if(p.lon > maxLon) maxLon = p.lon;
+            });
+            const margin = 0.08; 
+            const query = `[out:json][timeout:15];(node["natural"="peak"](${minLat-margin},${minLon-margin},${maxLat+margin},${maxLon+margin});node["place"~"village|town|city"](${minLat-margin},${minLon-margin},${maxLat+margin},${maxLon+margin}););out body;`;
+
+            try {
+                const res = await fetch("https://overpass-api.de/api/interpreter", { 
+                    method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: "data=" + encodeURIComponent(query) 
+                });
+                if (!res.ok) throw new Error("API Server error");
+                
+                const data = await res.json();
+                const features = data.elements.filter(e => e.tags && e.tags.name).map(e => ({
+                    type: "Feature", geometry: { type: "Point", coordinates: [e.lon, e.lat] },
+                    properties: { name: e.tags.name, type: e.tags.natural === "peak" ? "peak" : "place", ele: e.tags.ele || "" }
+                }));
+
+                if (map.getSource('pois')) map.getSource('pois').setData({type: "FeatureCollection", features});
+                else {
+                    map.addSource('pois', { type: 'geojson', data: {type: "FeatureCollection", features} });
+                    map.addLayer({ id: 'poi-peaks', type: 'symbol', source: 'pois', filter: ['==', 'type', 'peak'], layout: { 'text-field': ['concat', '▲ ', ['get', 'name'], '\n', ['get', 'ele'], ' m'], 'text-size': 13, 'text-anchor': 'bottom', 'text-offset': [0, -1], 'symbol-placement': 'point' }, paint: { 'text-color': '#fbbf24', 'text-halo-color': 'rgba(0,0,0,0.85)', 'text-halo-width': 2 } });
+                    map.addLayer({ id: 'poi-places', type: 'symbol', source: 'pois', filter: ['==', 'type', 'place'], layout: { 'text-field': ['get', 'name'], 'text-size': 15, 'text-anchor': 'center', 'text-offset': [0, 1] }, paint: { 'text-color': '#ffffff', 'text-halo-color': 'rgba(0,0,0,0.85)', 'text-halo-width': 2 } });
+                }
+                btn.innerText = "Zobrazeno ON";
+                btn.className = "bg-emerald-600 text-white border border-emerald-500 text-[11px] font-bold py-1.5 rounded-lg shadow-md transition-all";
+                poisVisible = true;
+            } catch (err) {
+                console.warn("POI API Blocked or Network Error.");
+                btn.innerText = "Chyba sítě u OSM";
+                btn.className = "bg-slate-800 border border-slate-700 text-slate-500 text-[11px] font-bold py-1.5 rounded-lg transition-all";
+            }
+        }
+
+        function addRouteToMap() {
+            if (map.getSource('route-full-src')) {
+                map.removeLayer('route-glow'); map.removeLayer('route-line'); map.removeSource('route-full-src');
+            }
+            const fullCoords = gpxtrackData.map(p => [p.lon, p.lat]);
+            map.addSource('route-full-src', { type: 'geojson', lineMetrics: true, data: { type: 'Feature', geometry: { type: 'LineString', coordinates: fullCoords } } });
+            
+            map.addLayer({ 
+                id: 'route-glow', type: 'line', source: 'route-full-src', 
+                paint: { 'line-width': 16, 'line-opacity': 0.6, 'line-blur': 8, 'line-gradient': ['step', ['line-progress'], '#f97316', 0.0001, 'rgba(0,0,0,0)'] } 
+            });
+            map.addLayer({ 
+                id: 'route-line', type: 'line', source: 'route-full-src', layout: { 'line-join': 'round', 'line-cap': 'round' }, 
+                paint: { 'line-width': 5, 'line-gradient': ['step', ['line-progress'], '#fbbf24', 0.0001, 'rgba(0,0,0,0)'] } 
+            });
+        }
+
+        async function cinematicStart() {
+            if (gpxtrackData.length === 0) { alert("Prosím, nejprve nahraj GPX trasu."); return; }
+            isPlaying = true; updatePlayUI();
+            
+            document.getElementById('hud-title').style.display = 'block';
+            document.getElementById('hud-stats').style.display = 'flex';
+            drawHUDProfile();
+            
+            currentIdx = 0; currentAnimDist = 0; 
+            smoothLat = gpxtrackData[0].lat; smoothLon = gpxtrackData[0].lon;
+            smoothBearing = gpxtrackData.length > 1 ? getBearing(smoothLat, smoothLon, gpxtrackData[1].lat, gpxtrackData[1].lon) : 0;
+            
+            map.setPaintProperty('route-glow', 'line-gradient', ['step', ['line-progress'], '#f97316', 0.0001, 'rgba(0,0,0,0)']);
+            map.setPaintProperty('route-line', 'line-gradient', ['step', ['line-progress'], '#fbbf24', 0.0001, 'rgba(0,0,0,0)']);
+
+            map.jumpTo({ center: [gpxtrackData[0].lon, gpxtrackData[0].lat], zoom: 12, pitch: 30, bearing: 0 });
+            await new Promise(r => setTimeout(r, 400));
+            
+            if (!isPlaying) return;
+            map.flyTo({ center: [gpxtrackData[0].lon, gpxtrackData[0].lat], zoom: 14.5, pitch: 65, bearing: smoothBearing, duration: 1800, essential: true });
+            await new Promise(r => setTimeout(r, 1900));
+            if (!isPlaying) return;
+
+            animationFrameId = requestAnimationFrame(gameLoop);
+        }
+
+        function gameLoop() {
+            if (!isPlaying) return;
+
+            if (document.getElementById('ignoreSpeed').checked) {
+                let kmPerFrame = 0.00045 * speedFactor; currentAnimDist += kmPerFrame;
+                if (currentAnimDist >= totalTrackDistance) currentIdx = gpxtrackData.length - 1;
+                else {
+                    let intId = 0;
+                    while (intId < gpxtrackData.length - 1 && gpxtrackData[intId+1].dist < currentAnimDist) intId++;
+                    let denom = gpxtrackData[intId+1].dist - gpxtrackData[intId].dist;
+                    currentIdx = intId + (denom > 0 ? (currentAnimDist - gpxtrackData[intId].dist) / denom : 0);
+                }
+            } else currentIdx += (speedFactor * 0.015);
+
+            if (currentIdx >= gpxtrackData.length - 1) { stopFlyover(); if (isRecording) stopRecording(); return; }
+
+            const fraction = currentIdx % 1, pt = gpxtrackData[Math.floor(currentIdx)], nextPt = gpxtrackData[Math.floor(currentIdx) + 1];
+            const exactLat = pt.lat + (nextPt.lat - pt.lat) * fraction;
+            const exactLon = pt.lon + (nextPt.lon - pt.lon) * fraction;
+            const exactDist = pt.dist + (nextPt.dist - pt.dist) * fraction;
+
+            document.getElementById('hudDist').innerHTML = exactDist.toFixed(1) + '<span class="text-2xl text-slate-300 ml-1">km</span>';
+            document.getElementById('hudEle').innerHTML = Math.round(pt.ele + (nextPt.ele - pt.ele) * fraction) + '<span class="text-2xl text-slate-300 ml-1">m</span>';
+
+            drawHUDProfile();
+
+            let lineProgress = Math.max(0.0001, Math.min(1, exactDist / totalTrackDistance));
+            map.setPaintProperty('route-glow', 'line-gradient', ['step', ['line-progress'], '#f97316', lineProgress, 'rgba(0,0,0,0)']);
+            map.setPaintProperty('route-line', 'line-gradient', ['step', ['line-progress'], '#fbbf24', lineProgress, 'rgba(0,0,0,0)']);
+
+            let lookAheadIdx = Math.min(Math.floor(currentIdx) + speedFactor * 3, gpxtrackData.length - 1);
+            let targetBearing = getBearing(exactLat, exactLon, gpxtrackData[lookAheadIdx].lat, gpxtrackData[lookAheadIdx].lon);
+
+            smoothLat += (exactLat - smoothLat) * 0.08; smoothLon += (exactLon - smoothLon) * 0.08;
+            let diff = targetBearing - smoothBearing; while (diff < -180) diff += 360; while (diff > 180) diff -= 360;
+            smoothBearing += diff * 0.04; smoothPitch += (65 - smoothPitch) * 0.08;
+
+            map.jumpTo({ center: [smoothLon, smoothLat], bearing: smoothBearing, pitch: smoothPitch, zoom: 14.5 });
+            animationFrameId = requestAnimationFrame(gameLoop);
+        }
+
+        function stopFlyover() {
+            isPlaying = false;
+            if (animationFrameId) { cancelAnimationFrame(animationFrameId); animationFrameId = null; }
+            updatePlayUI();
+        }
+
+        function updatePlayUI() {
+            document.getElementById('playIcon').innerText = isPlaying ? "⏸" : "▶";
+            document.getElementById('playText').innerText = isPlaying ? "Pozastavit let" : "Odstartovat let";
+        }
+
+        async function startRecording() {
+            if (isRecording) return;
+            try {
+                stopFlyover();
+                const mapWrapper = document.getElementById('map-wrapper');
+                mapWrapper.classList.add('recording-mode');
+                map.resize();
+                await new Promise(r => setTimeout(r, 500));
+
+                const stream = await navigator.mediaDevices.getDisplayMedia({ video: { displaySurface: "browser", frameRate: 60 }, audio: false, preferCurrentTab: true });
+                recordedChunks = []; isRecording = true;
+                
+                document.getElementById('btnRecord').classList.replace('bg-red-600', 'bg-slate-800');
+                document.getElementById('recordText').innerText = "Nahrávám čisté video (Klikni pro stop)...";
+
+                mediaRecorder = new MediaRecorder(stream, { mimeType: videoMimeType, videoBitsPerSecond: 14000000 });
+                mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); };
+                mediaRecorder.onstop = () => {
+                    isRecording = false;
+                    document.getElementById('btnRecord').classList.replace('bg-slate-800', 'bg-red-600');
+                    document.getElementById('recordText').innerText = "Nahrát video (Bez UI)";
+                    
+                    mapWrapper.classList.remove('recording-mode');
+                    setTimeout(() => map.resize(), 300);
+
+                    const blob = new Blob(recordedChunks, { type: videoMimeType });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a'); a.style.display = 'none'; a.href = url;
+                    
+                    const userFileName = document.getElementById('customRouteName').value.trim();
+                    a.download = `${userFileName ? userFileName : '3D-Trail'}.${videoExt}`;
+                    
+                    document.body.appendChild(a); a.click();
+                    setTimeout(() => { document.body.removeChild(a); window.URL.revokeObjectURL(url); }, 100);
+                    stream.getTracks().forEach(track => track.stop());
+                };
+
+                mediaRecorder.start();
+                setTimeout(() => { cinematicStart(); }, 600);
+            } catch (err) {
+                console.error(err);
+                document.getElementById('map-wrapper').classList.remove('recording-mode');
+                map.resize();
+            }
+        }
+
+        function stopRecording() { if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop(); }
+
+        function safeParseGPX(xmlText, fileName) {
+            try {
+                const xml = new DOMParser().parseFromString(xmlText, 'text/xml');
+                const trkpts = xml.getElementsByTagName('trkpt');
+                if (!trkpts || trkpts.length === 0) { alert("Tento GPX soubor neobsahuje žádnou trasu."); return; }
+
+                let pts = [], dist = 0, eleGain = 0;
+                for (let i = 0; i < trkpts.length; i++) {
+                    const latNode = trkpts[i].getAttribute('lat'), lonNode = trkpts[i].getAttribute('lon');
+                    if(!latNode || !lonNode) continue; 
+                    const lat = parseFloat(latNode), lon = parseFloat(lonNode);
+                    const eleNode = trkpts[i].getElementsByTagName('ele')[0];
+                    let ele = eleNode && eleNode.textContent ? parseFloat(eleNode.textContent) : 0;
+                    if(isNaN(ele)) ele = 0;
+
+                    if (pts.length > 0) {
+                        dist += calculateDistance(pts[pts.length-1].lat, pts[pts.length-1].lon, lat, lon);
+                        const eleDiff = ele - pts[pts.length-1].ele;
+                        if(eleDiff > 0) eleGain += eleDiff;
+                    }
+                    pts.push({ lat, lon, ele, dist });
+                }
+                
+                if(pts.length < 2) { alert("Trasa je příliš krátká."); return; }
+                totalElevationGain = Math.round(eleGain);
+                
+                const cleanName = fileName.replace(/\.[^/.]+$/, "");
+                loadGPXData(pts, dist, cleanName.toUpperCase());
+                
+                document.getElementById('dropzoneText').innerText = `✅ Načteno: ${pts.length} bodů`;
+            } catch(e) { alert("Nepodařilo se přečíst GPX soubor."); }
+        }
+
+        function loadGPXData(pts, dist, routeName) {
+            gpxtrackData = pts; totalTrackDistance = dist;
+            
+            document.getElementById('routeNameHud').innerText = routeName;
+            document.getElementById('customRouteName').value = routeName;
+            
+            document.getElementById('hudTitleUnderline').style.display = routeName.trim() ? 'block' : 'none';
+            
+            document.getElementById('eleGainVal').innerText = totalElevationGain + " m";
+            document.getElementById('hudElevationGain').style.display = document.getElementById('showEleGain').checked ? 'block' : 'none';
+            
+            document.getElementById('nameInputWrapper').style.display = "block";
+            setTimeout(() => { document.getElementById('nameInputWrapper').style.opacity = "1"; }, 50);
+
+            document.getElementById('animationControls').style.opacity = "1";
+            document.getElementById('animationControls').style.pointerEvents = "auto";
+            
+            document.getElementById('hud-title').style.display = 'block';
+            document.getElementById('hud-stats').style.display = 'flex';
+            document.getElementById('hudDist').innerHTML = '0.0<span class="text-2xl text-slate-300 ml-1">km</span>';
+            document.getElementById('hudEle').innerHTML = Math.round(pts[0].ele) + '<span class="text-2xl text-slate-300 ml-1">m</span>';
+
+            addRouteToMap();
+            drawHUDProfile(); 
+            map.jumpTo({ center: [pts[0].lon, pts[0].lat], zoom: 12, pitch: 0 });
+            
+            fetchAndDisplayPOIs(pts);
+        }
+
+        window.addEventListener('load', () => {
+            checkVideoFormatSupport();
+            initMap();
+
+            const dropzone = document.getElementById('dropzone');
+            const fileInput = document.getElementById('fileInput');
+
+            dropzone.addEventListener('click', (e) => {
+                // Pojistka proti zacyklení na některých prohlížečích
+                if(e.target !== fileInput) fileInput.click();
+            });
+            
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    const file = e.target.files[0]; const reader = new FileReader();
+                    reader.onload = (ev) => safeParseGPX(ev.target.result, file.name);
+                    reader.readAsText(file);
+                }
+            });
+
+            dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('border-amber-500'); });
+            dropzone.addEventListener('dragleave', (e) => { e.preventDefault(); dropzone.classList.remove('border-amber-500'); });
+            dropzone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropzone.classList.remove('border-amber-500');
+                if (e.dataTransfer.files.length > 0) {
+                    const file = e.dataTransfer.files[0];
+                    if(!file.name.toLowerCase().endsWith('.gpx')) { alert("Lze nahrát pouze .GPX soubory!"); return; }
+                    const reader = new FileReader();
+                    reader.onload = (ev) => safeParseGPX(ev.target.result, file.name);
+                    reader.readAsText(file);
+                }
+            });
+
+            document.getElementById('customRouteName').addEventListener('input', (e) => {
+                const val = e.target.value.trim().toUpperCase();
+                document.getElementById('routeNameHud').innerText = val;
+                document.getElementById('hudTitleUnderline').style.display = val ? 'block' : 'none';
+            });
+
+            document.getElementById('btnSample').addEventListener('click', () => {
+                let pts = [], dist = 0, eleGain = 0; const sLat = 50.7294, sLon = 15.7292;
+                for (let i = 0; i <= 240; i++) {
+                    const r = i / 240;
+                    const lat = sLat + (50.7360 - sLat)*r + Math.sin(r*Math.PI*3.5)*0.003;
+                    const lon = sLon + (15.7401 - sLon)*r + Math.cos(r*Math.PI*2.5)*0.005;
+                    const ele = 760 + (1603 - 760)*r + Math.sin(r*Math.PI*6)*45;
+                    if (i>0) {
+                        dist += calculateDistance(pts[i-1].lat, pts[i-1].lon, lat, lon);
+                        const diff = ele - pts[i-1].ele;
+                        if(diff > 0) eleGain += diff;
+                    }
+                    pts.push({ lat, lon, ele, dist });
+                }
+                totalElevationGain = Math.round(eleGain);
+                loadGPXData(pts, dist, "VÝŠLAP NA SNĚŽKU 🏔️");
+            });
+
+            document.getElementById('styleSat').addEventListener('click', (e) => {
+                map.setLayoutProperty('satellite-layer', 'visibility', 'visible'); map.setLayoutProperty('topo-layer', 'visibility', 'none');
+                e.target.className = "flex-1 bg-amber-600 text-white text-[11px] font-bold py-1.5 rounded-md transition-all shadow-md";
+                document.getElementById('styleTopo').className = "flex-1 text-slate-400 text-[11px] font-bold py-1.5 rounded-md hover:text-white transition-all";
+            });
+
+            document.getElementById('styleTopo').addEventListener('click', (e) => {
+                map.setLayoutProperty('satellite-layer', 'visibility', 'none'); map.setLayoutProperty('topo-layer', 'visibility', 'visible');
+                e.target.className = "flex-1 bg-amber-600 text-white text-[11px] font-bold py-1.5 rounded-md transition-all shadow-md";
+                document.getElementById('styleSat').className = "flex-1 text-slate-400 text-[11px] font-bold py-1.5 rounded-md hover:text-white transition-all";
+            });
+
+            document.getElementById('togglePois').addEventListener('click', (e) => {
+                if(e.target.disabled) return;
+                poisVisible = !poisVisible;
+                const vis = poisVisible ? 'visible' : 'none';
+                if(map.getLayer('poi-peaks')) map.setLayoutProperty('poi-peaks', 'visibility', vis);
+                if(map.getLayer('poi-places')) map.setLayoutProperty('poi-places', 'visibility', vis);
+                e.target.innerText = poisVisible ? "Zobrazeno ON" : "Skryto OFF";
+                e.target.className = poisVisible ? "bg-emerald-600 text-white border border-emerald-500 text-[11px] font-bold py-1.5 rounded-lg shadow-md transition-all" : "bg-slate-700 text-slate-400 text-[11px] font-bold py-1.5 rounded-lg transition-all";
+            });
+
+            document.getElementById('showProfile').addEventListener('change', drawHUDProfile);
+            
+            document.getElementById('showEleGain').addEventListener('change', (e) => {
+                document.getElementById('hudElevationGain').style.display = e.target.checked && gpxtrackData.length > 0 ? 'block' : 'none';
+            });
+
+            document.getElementById('speedSelector').addEventListener('change', (e) => speedFactor = parseInt(e.target.value));
+            document.getElementById('btnPlay').addEventListener('click', () => { if(isPlaying) stopFlyover(); else cinematicStart(); });
+            document.getElementById('btnRecord').addEventListener('click', () => { if(isRecording) stopRecording(); else startRecording(); });
+        });
+    </script>
+</body>
+</html>
