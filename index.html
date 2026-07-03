@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GPX 3D Trail Director V21</title>
+    <title>GPX 3D Trail Director V22</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/maplibre-gl@4.3.2/dist/maplibre-gl.js"></script>
@@ -41,7 +41,7 @@
                 </div>
                 <div>
                     <h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
-                        GPX 3D Trail Director <span class="bg-orange-500/10 text-orange-400 text-[10px] px-2.5 py-0.5 rounded-full uppercase font-extrabold border border-orange-500/30">OPTIMIZED</span>
+                        GPX 3D Trail Director <span class="bg-orange-500/10 text-orange-400 text-[10px] px-2.5 py-0.5 rounded-full uppercase font-extrabold border border-orange-500/30">PRO ORANGE</span>
                     </h1>
                 </div>
             </div>
@@ -117,7 +117,7 @@
                     <button id="btnRecord" class="bg-red-600 hover:bg-red-500 text-white font-bold py-3 px-4 rounded-xl transition flex flex-col justify-center items-center text-xs shadow-lg shadow-red-900/20">
                         <div class="flex items-center gap-2">
                             <span class="w-2.5 h-2.5 bg-white rounded-full pulse-recording inline-block" id="recordPulse"></span>
-                            <span id="recordText" class="text-sm">Nahrát celou obrazovku</span>
+                            <span id="recordText" class="text-sm">Nahrát (Auto Fullscreen)</span>
                         </div>
                     </button>
                 </div>
@@ -164,7 +164,7 @@
         <p class="text-xs text-slate-500 uppercase tracking-widest font-semibold">
             Vytvořil <span class="text-orange-500 font-black">Wondraz</span> © 2026
         </p>
-        <span class="bg-slate-800 text-yellow-500 text-[10px] font-bold px-2 py-0.5 rounded border border-yellow-500/30">VERZE 21 (OPT. LIMITS)</span>
+        <span class="bg-slate-800 text-yellow-500 text-[10px] font-bold px-2 py-0.5 rounded border border-yellow-500/30">VERZE 22 (FULLSCREEN FIX)</span>
     </footer>
 
     <input type="file" id="fileInput" accept=".gpx" style="display:none;" />
@@ -204,8 +204,6 @@
                 },
                 center: [15.732, 50.729], zoom: 12, pitch: 65, bearing: 0
             });
-            
-            // Snížení maxPitch pro masivní úsporu výkonu (nevykresluje vzdálený horizont)
             map.setMaxPitch(75);
         }
 
@@ -406,10 +404,24 @@
             try {
                 stopFlyover();
                 const mapWrapper = document.getElementById('map-wrapper');
+                
+                // --- NOVINKA: AUTOMATICKÝ FULLSCREEN PROHLÍŽEČE ---
+                try {
+                    if (!document.fullscreenElement) {
+                        await document.documentElement.requestFullscreen();
+                    }
+                } catch (e) {
+                    console.log("Fullscreen zamítnut, pokračujeme bez něj.", e);
+                }
+                
                 mapWrapper.classList.add('recording-mode');
                 map.resize();
                 
                 await new Promise(r => setTimeout(r, 500)); 
+
+                let videoMimeType = 'video/webm;codecs=vp9'; let videoExt = 'webm';
+                if (MediaRecorder.isTypeSupported('video/mp4;codecs=avc1')) { videoMimeType = 'video/mp4;codecs=avc1'; videoExt = 'mp4'; } 
+                else if (MediaRecorder.isTypeSupported('video/mp4')) { videoMimeType = 'video/mp4'; videoExt = 'mp4'; } 
 
                 const stream = await navigator.mediaDevices.getDisplayMedia({ video: { displaySurface: "browser", width: 1920, height: 1080, frameRate: 60 }, audio: false, preferCurrentTab: true });
                 recordedChunks = []; isRecording = true;
@@ -417,7 +429,7 @@
                 document.getElementById('btnRecord').classList.replace('bg-red-600', 'bg-slate-800');
                 document.getElementById('recordText').innerText = "Nahrávám video (Klikni pro stop)...";
 
-                mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp9', videoBitsPerSecond: 14000000 });
+                mediaRecorder = new MediaRecorder(stream, { mimeType: videoMimeType, videoBitsPerSecond: 14000000 });
                 mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); };
                 mediaRecorder.onstop = () => {
                     isRecording = false;
@@ -427,12 +439,17 @@
                     mapWrapper.classList.remove('recording-mode');
                     setTimeout(() => map.resize(), 300);
 
-                    const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                    // --- NOVINKA: UKONČENÍ FULLSCREENU ---
+                    if (document.fullscreenElement) {
+                        document.exitFullscreen();
+                    }
+
+                    const blob = new Blob(recordedChunks, { type: videoMimeType });
                     const url = URL.createObjectURL(blob);
                     const a = document.createElement('a'); a.style.display = 'none'; a.href = url;
                     
                     const userFileName = document.getElementById('customRouteName').value.trim();
-                    a.download = `${userFileName ? userFileName : '3D-Trail'}.webm`;
+                    a.download = `${userFileName ? userFileName : '3D-Trail'}.${videoExt}`;
                     
                     document.body.appendChild(a); a.click();
                     setTimeout(() => { document.body.removeChild(a); window.URL.revokeObjectURL(url); }, 100);
@@ -443,6 +460,7 @@
                 setTimeout(() => { cinematicStart(); }, 600);
             } catch (err) {
                 console.error(err);
+                if (document.fullscreenElement) { document.exitFullscreen(); }
                 document.getElementById('map-wrapper').classList.remove('recording-mode');
                 map.resize();
             }
@@ -467,7 +485,6 @@
                     let ele = eleNode && eleNode.textContent ? parseFloat(eleNode.textContent) : 0;
                     if(isNaN(ele)) ele = 0;
 
-                    // Výpočet hraničního boxu trasy pro optimalizaci
                     if(lat < minLat) minLat = lat; if(lat > maxLat) maxLat = lat;
                     if(lon < minLon) minLon = lon; if(lon > maxLon) maxLon = lon;
 
@@ -482,19 +499,13 @@
                 if(pts.length < 2) { alert("Trasa je příliš krátká."); return; }
                 totalElevationGain = Math.round(eleGain);
                 
-                // OMEZENÍ MAPY (OPTIMALIZACE VÝKONU)
-                const margin = 0.08; // Rezerva cca 8 km okolo trasy
-                map.setMaxBounds([
-                    [minLon - margin, minLat - margin], // SW
-                    [maxLon + margin, maxLat + margin]  // NE
-                ]);
+                const margin = 0.08; 
+                map.setMaxBounds([ [minLon - margin, minLat - margin], [maxLon + margin, maxLat + margin] ]);
 
                 const cleanName = fileName.replace(/\.[^/.]+$/, "");
                 loadGPXData(pts, dist, cleanName.toUpperCase());
                 
                 document.getElementById('dropzoneText').innerText = `✅ Načteno: ${pts.length} bodů`;
-                
-                // Stahování vrcholů jen pro tuto ohraničenou oblast
                 fetchAndDisplayPOIs(minLat, minLon, maxLat, maxLon);
 
             } catch(e) { alert("Nepodařilo se přečíst GPX soubor."); }
