@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GPX 3D Trail Director V24 - Studio Mode</title>
+    <title>GPX 3D Trail Director V25</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/maplibre-gl@4.3.2/dist/maplibre-gl.js"></script>
@@ -25,15 +25,10 @@
         }
         
         body.studio-mode-active #map-wrapper {
-            position: fixed !important; 
-            top: 0 !important; 
-            left: 0 !important; 
-            width: 100vw !important; 
-            height: 100vh !important;
-            z-index: 99999 !important; 
-            border-radius: 0 !important;
-            max-width: none !important;
-            margin: 0 !important;
+            position: fixed !important; top: 0 !important; left: 0 !important; 
+            width: 100vw !important; height: 100vh !important;
+            z-index: 99990 !important; border-radius: 0 !important;
+            max-width: none !important; margin: 0 !important;
         }
 
         #map { position: absolute; top: 0; left: 0; right: 0; bottom: 0; outline: none; }
@@ -41,14 +36,8 @@
         .hud-overlay { position: absolute; pointer-events: none; z-index: 10; text-shadow: 0px 3px 12px rgba(0, 0, 0, 0.9); }
         .ad-space { background-image: repeating-linear-gradient(45deg, #0f172a 25%, transparent 25%, transparent 75%, #0f172a 75%, #0f172a), repeating-linear-gradient(45deg, #0f172a 25%, #020617 25%, #020617 75%, #0f172a 75%, #0f172a); background-size: 20px 20px; }
         ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: #0f172a; } ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
-        
-        /* Instrukce na obrazovce ve Studio módu */
-        #studio-instructions {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            background: rgba(0,0,0,0.8); color: white; padding: 2rem 3rem; border-radius: 1rem;
-            text-align: center; z-index: 999999; font-weight: bold; font-size: 1.25rem;
-            border: 2px solid #f97316; opacity: 0; pointer-events: none; transition: opacity 0.5s;
-        }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+        .pulse-recording { animation: pulse 1.5s infinite; }
     </style>
 </head>
 <body class="bg-slate-950 text-slate-100 font-sans min-h-screen flex flex-col overflow-x-hidden">
@@ -102,9 +91,6 @@
             <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl" id="animationControls" style="opacity:0.3; pointer-events:none;">
                 <h2 class="font-bold text-slate-400 mb-2 text-xs uppercase tracking-wider">2. Režie kamery</h2>
                 <div class="flex flex-col gap-3">
-                    <button id="btnPlay" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-black py-3 rounded-xl text-sm transition-all flex justify-center items-center gap-2 shadow-lg">
-                        <span id="playIcon">▶</span> <span id="playText">Testovací let (Zde, s menu)</span>
-                    </button>
                     
                     <div class="grid grid-cols-2 gap-2 mt-1">
                         <div class="col-span-2 flex flex-col gap-1">
@@ -147,7 +133,7 @@
                     
                     <button id="btnStudioMode" class="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-400 hover:to-red-400 text-white font-black py-4 px-4 rounded-xl transition flex flex-col justify-center items-center text-sm shadow-[0_0_20px_rgba(249,115,22,0.4)]">
                         📺 Přejít do STUDIO MÓDU
-                        <span class="text-[10px] text-white/80 mt-1 font-normal uppercase tracking-wider">Skryje menu, nahráváš přes OS</span>
+                        <span class="text-[10px] text-white/80 mt-1 font-normal uppercase tracking-wider">Aktivuje nahrávání a Fullscreen</span>
                     </button>
                 </div>
             </div>
@@ -186,12 +172,23 @@
                     <span class="text-xs sm:text-sm font-black text-white tracking-widest uppercase">Trail Director <span class="text-orange-500">3D</span></span>
                 </div>
                 
-                <div id="studio-instructions">
-                    🎥 STUDIO MÓD AKTIVNÍ<br>
-                    <span class="text-sm font-normal text-slate-300 block mt-2">Zapni si nahrávání obrazovky (Mac: Cmd+Shift+5)</span>
-                    <span class="text-sm font-normal text-orange-400 block mt-1">Stiskni MEZERNÍK pro Start/Pauzu letu</span>
-                    <span class="text-sm font-normal text-slate-400 block mt-1">Stiskni ESC pro odchod z tohoto režimu</span>
+                <div id="studio-controls" class="fixed bottom-8 left-1/2 -translate-x-1/2 bg-slate-900/90 backdrop-blur-md border border-slate-700 p-3 rounded-2xl flex items-center gap-3 z-[999999] shadow-2xl transition-opacity duration-500" style="display:none;">
+                    <button id="btnStudioFullscreen" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2.5 rounded-xl text-sm font-bold transition flex items-center gap-2">
+                        ⛶ Fullscreen
+                    </button>
+                    <div class="w-px h-8 bg-slate-700 mx-1"></div>
+                    <button id="btnStudioPlay" class="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition">
+                        ▶ Letět (Bez záznamu)
+                    </button>
+                    <button id="btnStudioRecord" class="bg-red-600 hover:bg-red-500 text-white px-6 py-2.5 rounded-xl text-sm font-bold transition flex items-center gap-2 shadow-[0_0_15px_rgba(220,38,38,0.5)]">
+                        <span id="recordDot" class="w-2.5 h-2.5 bg-white rounded-full inline-block pulse-recording"></span> <span id="recordBtnText">Nahrávat obraz</span>
+                    </button>
+                    <div class="w-px h-8 bg-slate-700 mx-1"></div>
+                    <button id="btnStudioExit" class="text-slate-400 hover:text-white px-3 py-2.5 text-sm font-bold transition">
+                        ✖ Ukončit
+                    </button>
                 </div>
+
             </div>
         </div>
     </main>
@@ -200,7 +197,7 @@
         <p class="text-xs text-slate-500 uppercase tracking-widest font-semibold">
             Vytvořil <span class="text-orange-500 font-black">Wondraz</span> © 2026
         </p>
-        <span class="bg-slate-800 text-yellow-500 text-[10px] font-bold px-2 py-0.5 rounded border border-yellow-500/30">VERZE 24 (STUDIO MÓD)</span>
+        <span class="bg-slate-800 text-yellow-500 text-[10px] font-bold px-2 py-0.5 rounded border border-yellow-500/30">VERZE 25 (ULTIMATE STUDIO)</span>
     </footer>
 
     <input type="file" id="fileInput" accept=".gpx" style="display:none;" />
@@ -220,6 +217,7 @@
         let inStudioMode = false;
 
         let smoothLat = null; let smoothLon = null; let smoothBearing = null; let smoothPitch = 65;
+        let mediaRecorder = null; let recordedChunks = []; let isRecording = false;
 
         function initMap() {
             map = new maplibregl.Map({
@@ -240,7 +238,6 @@
                 },
                 center: [15.732, 50.729], zoom: 12, pitch: 65, bearing: 0
             });
-            // Omezení úhlu pohledu šetří extrémní množství paměti při vykreslování
             map.setMaxPitch(75);
         }
 
@@ -358,12 +355,18 @@
         async function cinematicStart() {
             if (gpxtrackData.length === 0) { alert("Prosím, nejprve nahraj GPX trasu."); return; }
             
-            // Pokud jsme právě odstartovali z menu, skočíme pro jistotu rovnou na začátek
             if(!isPlaying && currentIdx === 0) {
                 smoothLat = gpxtrackData[0].lat; smoothLon = gpxtrackData[0].lon;
                 smoothBearing = gpxtrackData.length > 1 ? getBearing(smoothLat, smoothLon, gpxtrackData[1].lat, gpxtrackData[1].lon) : 0;
                 map.jumpTo({ center: [gpxtrackData[0].lon, gpxtrackData[0].lat], zoom: 12, pitch: 30, bearing: 0 });
                 await new Promise(r => setTimeout(r, 400));
+                
+                if (inStudioMode && isRecording) {
+                    // Plynule skryjeme ovládací panel studia aby nebyl na videu
+                    document.getElementById('studio-controls').style.opacity = '0';
+                    document.getElementById('studio-controls').style.pointerEvents = 'none';
+                }
+
                 map.flyTo({ center: [gpxtrackData[0].lon, gpxtrackData[0].lat], zoom: 14.5, pitch: 65, bearing: smoothBearing, duration: 1800, essential: true });
                 await new Promise(r => setTimeout(r, 1900));
             }
@@ -389,7 +392,7 @@
                 }
             } else currentIdx += (speedFactor * 0.015);
 
-            if (currentIdx >= gpxtrackData.length - 1) { stopFlyover(); return; }
+            if (currentIdx >= gpxtrackData.length - 1) { stopFlyover(); if(isRecording) stopStudioRecording(); return; }
 
             const fraction = currentIdx % 1, pt = gpxtrackData[Math.floor(currentIdx)], nextPt = gpxtrackData[Math.floor(currentIdx) + 1];
             const exactLat = pt.lat + (nextPt.lat - pt.lat) * fraction;
@@ -426,49 +429,103 @@
         }
 
         function updatePlayUI() {
-            document.getElementById('playIcon').innerText = isPlaying ? "⏸" : "▶";
-            document.getElementById('playText').innerText = isPlaying ? "Pozastavit let" : "Testovací let (Zde, s menu)";
+            const btnPlay = document.getElementById('btnStudioPlay');
+            if(isPlaying) {
+                btnPlay.innerText = "⏸ Pauza";
+                btnPlay.classList.replace('bg-emerald-600', 'bg-amber-600');
+                btnPlay.classList.replace('hover:bg-emerald-500', 'hover:bg-amber-500');
+            } else {
+                btnPlay.innerText = "▶ Letět (Bez záznamu)";
+                btnPlay.classList.replace('bg-amber-600', 'bg-emerald-600');
+                btnPlay.classList.replace('hover:bg-amber-500', 'hover:bg-emerald-500');
+            }
         }
 
-        // --- PŘIDÁNO: FUNKCE PRO STUDIO MÓD ---
+        // --- ŘÍZENÍ STUDIO MÓDU ---
         function enterStudioMode() {
             if (gpxtrackData.length === 0) { alert("Prosím, nejprve nahraj GPX trasu."); return; }
-            
             inStudioMode = true;
             document.body.classList.add('studio-mode-active');
-            map.resize(); // Donutí mapu překreslit se přes celou obrazovku
-
-            // Zobrazení nápovědy na 4 vteřiny
-            const inst = document.getElementById('studio-instructions');
-            inst.style.opacity = '1';
-            setTimeout(() => { inst.style.opacity = '0'; }, 4000);
+            map.resize(); 
+            
+            // Zobrazit ovládací pult
+            const controls = document.getElementById('studio-controls');
+            controls.style.display = 'flex';
+            setTimeout(() => { controls.style.opacity = '1'; controls.style.pointerEvents = 'auto'; }, 50);
         }
 
         function exitStudioMode() {
             inStudioMode = false;
             stopFlyover();
+            if(isRecording) stopStudioRecording();
+            if (document.fullscreenElement) document.exitFullscreen();
+            
             document.body.classList.remove('studio-mode-active');
+            document.getElementById('studio-controls').style.display = 'none';
             map.resize();
         }
 
-        // --- PŘIDÁNO: OVLÁDÁNÍ KLÁVESNICÍ ---
-        window.addEventListener('keydown', (e) => {
-            // Mezerník: Přehrát / Pozastavit
-            if (e.code === 'Space') {
-                // Aby mezerník neroloval stránku dolů
-                if(e.target === document.body || inStudioMode) e.preventDefault();
-                
-                if (gpxtrackData.length > 0) {
-                    if (isPlaying) stopFlyover();
-                    else cinematicStart();
-                }
-            }
-            // ESC: Návrat ze Studio Módu
-            if (e.code === 'Escape' && inStudioMode) {
-                exitStudioMode();
-            }
-        });
+        // ZABUDOVANÉ NAHRÁVÁNÍ PŘÍMO ZE STUDIA
+        async function startStudioRecording() {
+            if (isRecording) { stopStudioRecording(); return; }
+            
+            try {
+                // Připravíme formáty
+                let videoMimeType = 'video/webm;codecs=vp9'; let videoExt = 'webm';
+                if (MediaRecorder.isTypeSupported('video/mp4;codecs=avc1')) { videoMimeType = 'video/mp4;codecs=avc1'; videoExt = 'mp4'; } 
+                else if (MediaRecorder.isTypeSupported('video/mp4')) { videoMimeType = 'video/mp4'; videoExt = 'mp4'; } 
 
+                // Zeptáme se uživatele
+                const stream = await navigator.mediaDevices.getDisplayMedia({ video: { displaySurface: "browser", width: 1920, height: 1080, frameRate: 60 }, audio: false, preferCurrentTab: true });
+                recordedChunks = []; isRecording = true;
+
+                // Aktualizace UI tlačítka
+                const btnRec = document.getElementById('btnStudioRecord');
+                const btnText = document.getElementById('recordBtnText');
+                const recordDot = document.getElementById('recordDot');
+                btnRec.classList.replace('bg-red-600', 'bg-slate-800');
+                btnRec.classList.replace('hover:bg-red-500', 'hover:bg-slate-700');
+                btnText.innerText = "Ukončit nahrávání";
+                recordDot.classList.add('pulse-recording');
+
+                mediaRecorder = new MediaRecorder(stream, { mimeType: videoMimeType, videoBitsPerSecond: 14000000 });
+                mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); };
+                mediaRecorder.onstop = () => {
+                    isRecording = false;
+                    
+                    // Vrácení UI tlačítka do normálu
+                    btnRec.classList.replace('bg-slate-800', 'bg-red-600');
+                    btnRec.classList.replace('hover:bg-slate-700', 'hover:bg-red-500');
+                    btnText.innerText = "Nahrávat obraz";
+                    
+                    // Zobrazíme znovu panel
+                    document.getElementById('studio-controls').style.opacity = '1';
+                    document.getElementById('studio-controls').style.pointerEvents = 'auto';
+
+                    const blob = new Blob(recordedChunks, { type: videoMimeType });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a'); a.style.display = 'none'; a.href = url;
+                    
+                    const userFileName = document.getElementById('customRouteName').value.trim();
+                    a.download = `${userFileName ? userFileName : '3D-Trail'}.${videoExt}`;
+                    
+                    document.body.appendChild(a); a.click();
+                    setTimeout(() => { document.body.removeChild(a); window.URL.revokeObjectURL(url); }, 100);
+                    stream.getTracks().forEach(track => track.stop());
+                };
+
+                mediaRecorder.start();
+                // Nyní odstartujeme samotný let a schováme panel (děje se uvnitř cinematicStart)
+                setTimeout(() => { cinematicStart(); }, 400);
+
+            } catch(e) {
+                console.log("Nahrávání zrušeno nebo selhalo", e);
+            }
+        }
+
+        function stopStudioRecording() {
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+        }
 
         function safeParseGPX(xmlText, fileName) {
             try {
@@ -487,7 +544,6 @@
                     let ele = eleNode && eleNode.textContent ? parseFloat(eleNode.textContent) : 0;
                     if(isNaN(ele)) ele = 0;
 
-                    // Ochranná klec z Verze 21 (Zlepšuje výkon načítání!)
                     if(lat < minLat) minLat = lat; if(lat > maxLat) maxLat = lat;
                     if(lon < minLon) minLon = lon; if(lon > maxLon) maxLon = lon;
 
@@ -517,7 +573,6 @@
         function loadGPXData(pts, dist, routeName) {
             gpxtrackData = pts; totalTrackDistance = dist;
             
-            // Reset animace
             currentIdx = 0; currentAnimDist = 0;
             stopFlyover();
 
@@ -642,12 +697,28 @@
 
             document.getElementById('speedSelector').addEventListener('change', (e) => speedFactor = parseInt(e.target.value));
             
-            document.getElementById('btnPlay').addEventListener('click', () => { 
-                if(isPlaying) stopFlyover(); else cinematicStart(); 
-            });
-            
-            // Aktivace Studio Módu
+            // TLAČÍTKA A AKCE
             document.getElementById('btnStudioMode').addEventListener('click', enterStudioMode);
+            document.getElementById('btnStudioExit').addEventListener('click', exitStudioMode);
+            
+            document.getElementById('btnStudioPlay').addEventListener('click', () => {
+                if(isPlaying) stopFlyover(); else cinematicStart();
+            });
+
+            document.getElementById('btnStudioRecord').addEventListener('click', startStudioRecording);
+
+            // Nativní Fullscreen volání musí být připojeno přímo na klik
+            document.getElementById('btnStudioFullscreen').addEventListener('click', () => {
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen().catch(err => {
+                        alert("Prohlížeč zablokoval Fullscreen. Použijte zelené tlačítko okna (Mac) nebo klávesu F11.");
+                    });
+                    document.getElementById('btnStudioFullscreen').innerHTML = "✖ Zrušit Fullscreen";
+                } else {
+                    document.exitFullscreen();
+                    document.getElementById('btnStudioFullscreen').innerHTML = "⛶ Fullscreen";
+                }
+            });
         });
     </script>
 </body>
