@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GPX 3D Trail Director V22</title>
+    <title>GPX 3D Trail Director V23</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/maplibre-gl@4.3.2/dist/maplibre-gl.js"></script>
@@ -15,6 +15,7 @@
             background: #050505; border-radius: 1.25rem; overflow: hidden;
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7); transition: all 0.3s ease;
         }
+        /* Falešný fullscreen: roztáhne mapu přes celou záložku */
         .recording-mode {
             position: fixed !important; top: 0 !important; left: 0 !important;
             width: 100vw !important; height: 100vh !important;
@@ -117,7 +118,7 @@
                     <button id="btnRecord" class="bg-red-600 hover:bg-red-500 text-white font-bold py-3 px-4 rounded-xl transition flex flex-col justify-center items-center text-xs shadow-lg shadow-red-900/20">
                         <div class="flex items-center gap-2">
                             <span class="w-2.5 h-2.5 bg-white rounded-full pulse-recording inline-block" id="recordPulse"></span>
-                            <span id="recordText" class="text-sm">Nahrát (Auto Fullscreen)</span>
+                            <span id="recordText" class="text-sm">Nahrát video (Bez UI)</span>
                         </div>
                     </button>
                 </div>
@@ -164,7 +165,7 @@
         <p class="text-xs text-slate-500 uppercase tracking-widest font-semibold">
             Vytvořil <span class="text-orange-500 font-black">Wondraz</span> © 2026
         </p>
-        <span class="bg-slate-800 text-yellow-500 text-[10px] font-bold px-2 py-0.5 rounded border border-yellow-500/30">VERZE 22 (FULLSCREEN FIX)</span>
+        <span class="bg-slate-800 text-yellow-500 text-[10px] font-bold px-2 py-0.5 rounded border border-yellow-500/30">VERZE 23 (CLEAN RECORD)</span>
     </footer>
 
     <input type="file" id="fileInput" accept=".gpx" style="display:none;" />
@@ -405,20 +406,11 @@
                 stopFlyover();
                 const mapWrapper = document.getElementById('map-wrapper');
                 
-                // --- NOVINKA: AUTOMATICKÝ FULLSCREEN PROHLÍŽEČE ---
-                try {
-                    if (!document.fullscreenElement) {
-                        await document.documentElement.requestFullscreen();
-                    }
-                } catch (e) {
-                    console.log("Fullscreen zamítnut, pokračujeme bez něj.", e);
-                }
-                
+                // 1. Zvětšíme mapu v rámci dokumentu (zrušili jsme systémový requestFullscreen)
                 mapWrapper.classList.add('recording-mode');
                 map.resize();
                 
-                await new Promise(r => setTimeout(r, 500)); 
-
+                // 2. OKAMŽITÉ volání natáčení obrazovky bez jakéhokoliv prodlení (vyžadováno bezpečností prohlížečů)
                 let videoMimeType = 'video/webm;codecs=vp9'; let videoExt = 'webm';
                 if (MediaRecorder.isTypeSupported('video/mp4;codecs=avc1')) { videoMimeType = 'video/mp4;codecs=avc1'; videoExt = 'mp4'; } 
                 else if (MediaRecorder.isTypeSupported('video/mp4')) { videoMimeType = 'video/mp4'; videoExt = 'mp4'; } 
@@ -434,15 +426,10 @@
                 mediaRecorder.onstop = () => {
                     isRecording = false;
                     document.getElementById('btnRecord').classList.replace('bg-slate-800', 'bg-red-600');
-                    document.getElementById('recordText').innerText = "Nahrát celou obrazovku";
+                    document.getElementById('recordText').innerText = "Nahrát video (Bez UI)";
                     
                     mapWrapper.classList.remove('recording-mode');
                     setTimeout(() => map.resize(), 300);
-
-                    // --- NOVINKA: UKONČENÍ FULLSCREENU ---
-                    if (document.fullscreenElement) {
-                        document.exitFullscreen();
-                    }
 
                     const blob = new Blob(recordedChunks, { type: videoMimeType });
                     const url = URL.createObjectURL(blob);
@@ -457,10 +444,12 @@
                 };
 
                 mediaRecorder.start();
+                // Opožděný start samotné animace
                 setTimeout(() => { cinematicStart(); }, 600);
+                
             } catch (err) {
-                console.error(err);
-                if (document.fullscreenElement) { document.exitFullscreen(); }
+                console.error("Uživatel zrušil nahrávání nebo chyba oprávnění:", err);
+                // Vracíme mapu do původní velikosti, pokud uživatel sdílení zrušil
                 document.getElementById('map-wrapper').classList.remove('recording-mode');
                 map.resize();
             }
