@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GPX 3D Trail Director V30 - Ultimate IG Studio</title>
+    <title>GPX 3D Trail Director V31 - IG Column Menu</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/maplibre-gl@4.3.2/dist/maplibre-gl.js"></script>
@@ -38,6 +38,34 @@
         
         body.format-ig #hud-profile-container { bottom: 120px !important; left: 1rem !important; right: 1rem !important; height: 50px !important; }
         
+        /* NOVINKA V31: OVLÁDACÍ MENU DO SLOUPKU PRO IG MÓD */
+        body.format-ig #studio-controls {
+            flex-direction: column !important;
+            top: 50% !important;
+            bottom: auto !important;
+            transform: translate(-50%, -50%) !important;
+            width: 260px !important;
+            padding: 1.5rem !important;
+        }
+        body.format-ig #studio-controls button {
+            width: 100% !important;
+            justify-content: center !important;
+            padding-top: 0.875rem !important;
+            padding-bottom: 0.875rem !important;
+        }
+        body.format-ig #studio-controls .w-px {
+            display: none !important; /* Skryje svislé dělicí čáry */
+        }
+        body.format-ig #studio-controls .absolute.-top-6 {
+            position: relative !important;
+            top: 0 !important;
+            left: 0 !important;
+            margin-bottom: 0.5rem !important;
+            text-align: center !important;
+            width: 100% !important;
+            white-space: normal !important;
+        }
+
         /* STUDIO MÓD - SKRYTÍ VŠEHO OKOLO */
         body.studio-mode-active header,
         body.studio-mode-active footer,
@@ -216,20 +244,23 @@
                     <span class="text-xs sm:text-sm font-black text-white tracking-widest uppercase">Trail Director <span class="text-orange-500">3D</span></span>
                 </div>
                 
-                <div id="studio-controls" class="absolute bottom-8 left-1/2 -translate-x-1/2 bg-slate-900/95 backdrop-blur-md border border-slate-700 p-3 rounded-2xl flex items-center gap-3 z-[999999] shadow-2xl transition-opacity duration-500 w-[90%] sm:w-auto overflow-x-auto" style="display:none;">
+                <div id="studio-controls" class="absolute bottom-8 left-1/2 -translate-x-1/2 bg-slate-900/95 backdrop-blur-md border border-slate-700 p-3 rounded-2xl flex items-center gap-3 z-[999999] shadow-2xl transition-opacity duration-500 w-[90%] sm:w-auto overflow-hidden" style="display:none;">
+                    <div class="absolute -top-6 left-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-black/50 px-2 py-0.5 rounded whitespace-nowrap">
+                        💡 Mezerník = Start | ESC = Zpět
+                    </div>
                     <button id="btnStudioFullscreen" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2.5 rounded-xl text-sm font-bold transition flex items-center gap-2 whitespace-nowrap">
                         ⛶ Fullscreen
                     </button>
                     <div class="w-px h-8 bg-slate-700 mx-1 hidden sm:block"></div>
                     <button id="btnStudioPlay" class="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition whitespace-nowrap">
-                        ▶ Letět
+                        ▶ Letět (Bez kamery)
                     </button>
                     <button id="btnStudioRecord" class="bg-red-600 hover:bg-red-500 text-white px-6 py-2.5 rounded-xl text-sm font-bold transition flex items-center gap-2 shadow-[0_0_15px_rgba(220,38,38,0.5)] whitespace-nowrap">
                         <span id="recordDot" class="w-2.5 h-2.5 bg-white rounded-full inline-block"></span> <span id="recordBtnText">Nahrávat obraz</span>
                     </button>
                     <div class="w-px h-8 bg-slate-700 mx-1 hidden sm:block"></div>
                     <button id="btnStudioExit" class="text-slate-400 hover:text-white px-3 py-2.5 text-sm font-bold transition whitespace-nowrap">
-                        ✖ Ukončit
+                        ✖ Zrušit
                     </button>
                 </div>
 
@@ -241,7 +272,7 @@
         <p class="text-xs text-slate-500 uppercase tracking-widest font-semibold">
             Vytvořil <span class="text-orange-500 font-black">Wondraz</span> © 2026
         </p>
-        <span class="bg-slate-800 text-yellow-500 text-[10px] font-bold px-2 py-0.5 rounded border border-yellow-500/30">VERZE 30 (IG ABSOLUTE)</span>
+        <span class="bg-slate-800 text-yellow-500 text-[10px] font-bold px-2 py-0.5 rounded border border-yellow-500/30">VERZE 31 (IG COLUMN FIX)</span>
     </footer>
 
     <input type="file" id="fileInput" accept=".gpx" style="display:none;" />
@@ -406,7 +437,7 @@
                 map.jumpTo({ center: [gpxtrackData[0].lon, gpxtrackData[0].lat], zoom: 12, pitch: 30, bearing: 0 });
                 await new Promise(r => setTimeout(r, 400));
                 
-                // SKRYTÍ PANELU: Okamžitě zmizí na startu letu
+                // SKRYTÍ MENU: Dokonalé zmizení ovládacího panelu ve Studiu
                 if (inStudioMode) {
                     document.getElementById('studio-controls').style.opacity = '0';
                     document.getElementById('studio-controls').style.pointerEvents = 'none';
@@ -497,7 +528,7 @@
                         document.getElementById('studio-controls').style.pointerEvents = 'none';
                     }
                 } else {
-                    btnStudioPlay.innerText = "▶ Letět";
+                    btnStudioPlay.innerText = "▶ Letět (Bez záznamu)";
                     btnStudioPlay.classList.replace('bg-amber-600', 'bg-emerald-600');
                     
                     // Zobrazíme panel pokud stojíme
@@ -560,7 +591,7 @@
                 const btnText = document.getElementById('recordBtnText');
                 const recordDot = document.getElementById('recordDot');
                 
-                // OKAMŽITÉ SKRYTÍ: Panel hned zmizí pro čistý start videa
+                // OKAMŽITÉ SKRYTÍ MENU: Hned po výběru karty se schová, aby nezaclánělo
                 document.getElementById('studio-controls').style.opacity = '0';
                 document.getElementById('studio-controls').style.pointerEvents = 'none';
 
@@ -597,7 +628,7 @@
 
                 mediaRecorder.start();
 
-                // 6 VTEŘIN ČISTÁ PRODLEVA (Kamera čeká na startovní pozici, menu je už pryč a lišty mizí)
+                // 6 VTEŘIN ČISTÁ PRODLEVA (Nahrává se jen čistá statická obrazovka bez menu)
                 countdownInterval = setTimeout(() => {
                     if (isRecording) {
                         cinematicStart();
@@ -606,6 +637,8 @@
 
             } catch(e) {
                 console.log("Nahrávání zrušeno", e);
+                document.getElementById('studio-controls').style.opacity = '1';
+                document.getElementById('studio-controls').style.pointerEvents = 'auto';
             }
         }
 
@@ -783,6 +816,7 @@
 
             document.getElementById('speedSelector').addEventListener('change', (e) => speedFactor = parseInt(e.target.value));
             
+            // PŘEPÍNAČ FORMÁTU (16:9 vs 9:16 IG)
             document.getElementById('formatSelector').addEventListener('change', (e) => {
                 if (e.target.value === '9-16') {
                     document.body.classList.add('format-ig');
