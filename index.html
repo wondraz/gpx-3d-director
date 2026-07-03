@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GPX 3D Trail Director V27 - IG Reel Ready</title>
+    <title>GPX 3D Trail Director V28</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/maplibre-gl@4.3.2/dist/maplibre-gl.js"></script>
@@ -19,9 +19,24 @@
         /* ŽIVÝ PREVIEW INSTAGRAM MÓDU V EDITORU */
         body.format-ig #map-wrapper {
             aspect-ratio: 9 / 16 !important;
-            max-width: 380px;
+            max-width: 400px;
             margin: 0 auto;
         }
+        
+        /* ZMENŠENÍ A VYCENTROVÁNÍ HUD PRO INSTAGRAM (9:16) */
+        body.format-ig #hud-stats { padding-left: 1rem !important; padding-right: 1rem !important; bottom: 1.5rem !important; justify-content: center !important; }
+        body.format-ig #hud-stats .flex.gap-8 { gap: 1rem !important; padding: 0.75rem 1.25rem !important; border-radius: 1.25rem !important; width: 100%; justify-content: center; }
+        body.format-ig .border-l.pl-8 { padding-left: 1rem !important; }
+        body.format-ig span.text-5xl { font-size: 1.75rem !important; line-height: 2rem !important; }
+        body.format-ig span.text-2xl { font-size: 1rem !important; }
+        body.format-ig span.text-xs { font-size: 0.6rem !important; }
+        
+        body.format-ig #hud-title { top: 1.5rem !important; left: 1.5rem !important; right: 1.5rem !important; }
+        body.format-ig #hud-title h2 { font-size: 1.75rem !important; line-height: 2rem !important; }
+        body.format-ig #hudElevationGain { font-size: 0.8rem !important; margin-top: 0.5rem !important; }
+        body.format-ig #hudTitleUnderline { width: 3rem !important; height: 0.25rem !important; }
+        
+        body.format-ig #hud-profile-container { bottom: 120px !important; left: 1rem !important; right: 1rem !important; height: 50px !important; }
         
         /* STUDIO MÓD - SKRYTÍ VŠEHO OKOLO */
         body.studio-mode-active header,
@@ -51,17 +66,7 @@
         }
 
         #map { position: absolute; top: 0; left: 0; right: 0; bottom: 0; outline: none; }
-        
         .hud-overlay { position: absolute; pointer-events: none; z-index: 10; text-shadow: 0px 3px 12px rgba(0, 0, 0, 0.9); }
-        
-        /* RERESPONSIVNÍ PŘESKLÁDÁNÍ HUD PRO INSTAGRAM (9:16) */
-        body.format-ig #hud-title h2 { font-size: 1.875rem !important; line-height: 2.25rem !important; }
-        body.format-ig #hud-stats { padding-left: 1.5rem !important; padding-right: 1.5rem !important; bottom: 1.5rem !important; }
-        body.format-ig #hud-stats > div { flex-direction: column !important; gap: 0.75rem !important; align-items: flex-start !important; p: 1rem !important; border-radius: 1.25rem !important; }
-        body.format-ig #hud-stats > div > div:nth-child(2) { border-left: none !important; padding-left: 0 !important; border-top: 1px solid rgba(255,255,255,0.15) !important; padding-top: 0.75rem !important; width: 100% !important; }
-        body.format-ig #hud-stats span.text-5xl { font-size: 2.25rem !important; line-height: 2.5rem !important; }
-        body.format-ig #hud-profile-container { left: 1.5rem !important; right: 1.5rem !important; bottom: 190px !important; h: 14px !important; }
-
         .ad-space { background-image: repeating-linear-gradient(45deg, #0f172a 25%, transparent 25%, transparent 75%, #0f172a 75%, #0f172a), repeating-linear-gradient(45deg, #0f172a 25%, #020617 25%, #020617 75%, #0f172a 75%, #0f172a); background-size: 20px 20px; }
         ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: #0f172a; } ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
@@ -158,13 +163,21 @@
                                 <label for="showEleGain" class="text-[11px] font-bold text-blue-400 cursor-pointer select-none">Ukázat nastoupané metry</label>
                             </div>
                         </div>
+
+                        <div class="col-span-2 flex flex-col gap-1 mt-1">
+                            <span class="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Formát videa</span>
+                            <select id="formatSelector" class="bg-slate-800 border border-slate-700 rounded-lg px-2 py-1.5 text-[11px] font-semibold text-white outline-none w-full cursor-pointer">
+                                <option value="16-9" selected>🎬 Na šířku (16:9 - YouTube)</option>
+                                <option value="9-16">📱 Na výšku (9:16 - IG Reels)</option>
+                            </select>
+                        </div>
                     </div>
                     
                     <hr class="border-slate-800 my-1">
                     
                     <button id="btnStudioMode" class="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-400 hover:to-red-400 text-white font-black py-4 px-4 rounded-xl transition flex flex-col justify-center items-center text-sm shadow-[0_0_20px_rgba(249,115,22,0.4)]">
                         📺 Přejít do STUDIO MÓDU
-                        <span class="text-[10px] text-white/80 mt-1 font-normal uppercase tracking-wider">Aktivuje svislý ořez a odpočet</span>
+                        <span class="text-[10px] text-white/80 mt-1 font-normal uppercase tracking-wider">Aktivuje plný displej a nahrávání</span>
                     </button>
                 </div>
             </div>
@@ -187,35 +200,35 @@
                 </div>
 
                 <div id="hud-stats" class="hud-overlay bottom-8 left-0 right-0 px-8 flex justify-between items-end" style="display:none">
-                    <div class="flex gap-8 bg-black/60 p-5 rounded-3xl backdrop-blur-md border border-orange-500/20 shadow-2xl">
-                        <div>
+                    <div class="flex gap-8 bg-black/60 p-5 rounded-3xl backdrop-blur-md border border-orange-500/20 shadow-2xl w-full sm:w-auto">
+                        <div class="flex items-center sm:items-start flex-row sm:flex-col">
                             <span class="text-xs font-bold text-orange-400 uppercase tracking-widest block mb-0.5 opacity-90">Ujeta vzdálenost</span>
                             <span class="text-5xl font-black text-white" id="hudDist">0.0<span class="text-2xl text-slate-300 ml-1">km</span></span>
                         </div>
-                        <div class="border-l border-white/20 pl-8">
+                        <div class="border-l border-white/20 pl-8 flex items-center sm:items-start flex-row sm:flex-col">
                             <span class="text-xs font-bold text-orange-400 uppercase tracking-widest block mb-0.5 opacity-90">Nadm. výška</span>
                             <span class="text-5xl font-black text-white" id="hudEle">0<span class="text-2xl text-slate-300 ml-1">m</span></span>
                         </div>
                     </div>
                 </div>
                 
-                <div class="hud-overlay top-6 right-6 opacity-40">
+                <div class="hud-overlay top-6 right-6 opacity-40 hidden sm:block">
                     <span class="text-xs sm:text-sm font-black text-white tracking-widest uppercase">Trail Director <span class="text-orange-500">3D</span></span>
                 </div>
                 
-                <div id="studio-controls" class="fixed bottom-8 left-1/2 -translate-x-1/2 bg-slate-900/90 backdrop-blur-md border border-slate-700 p-3 rounded-2xl flex items-center gap-3 z-[999999] shadow-2xl transition-all duration-500">
-                    <button id="btnStudioFullscreen" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2.5 rounded-xl text-sm font-bold transition flex items-center gap-2">
+                <div id="studio-controls" class="fixed bottom-8 left-1/2 -translate-x-1/2 bg-slate-900/90 backdrop-blur-md border border-slate-700 p-3 rounded-2xl flex items-center gap-3 z-[999999] shadow-2xl transition-opacity duration-500 w-[95%] sm:w-auto overflow-x-auto" style="display:none;">
+                    <button id="btnStudioFullscreen" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2.5 rounded-xl text-sm font-bold transition flex items-center gap-2 whitespace-nowrap">
                         ⛶ Fullscreen
                     </button>
-                    <div class="w-px h-8 bg-slate-700 mx-1"></div>
-                    <button id="btnStudioPlay" class="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition">
-                        ▶ Letět (Bez záznamu)
+                    <div class="w-px h-8 bg-slate-700 mx-1 hidden sm:block"></div>
+                    <button id="btnStudioPlay" class="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition whitespace-nowrap">
+                        ▶ Letět (Test)
                     </button>
-                    <button id="btnStudioRecord" class="bg-red-600 hover:bg-red-500 text-white px-6 py-2.5 rounded-xl text-sm font-bold transition flex items-center gap-2 shadow-[0_0_15px_rgba(220,38,38,0.5)]">
+                    <button id="btnStudioRecord" class="bg-red-600 hover:bg-red-500 text-white px-6 py-2.5 rounded-xl text-sm font-bold transition flex items-center gap-2 shadow-[0_0_15px_rgba(220,38,38,0.5)] whitespace-nowrap">
                         <span id="recordDot" class="w-2.5 h-2.5 bg-white rounded-full inline-block"></span> <span id="recordBtnText">Nahrávat obraz</span>
                     </button>
-                    <div class="w-px h-8 bg-slate-700 mx-1"></div>
-                    <button id="btnStudioExit" class="text-slate-400 hover:text-white px-3 py-2.5 text-sm font-bold transition">
+                    <div class="w-px h-8 bg-slate-700 mx-1 hidden sm:block"></div>
+                    <button id="btnStudioExit" class="text-slate-400 hover:text-white px-3 py-2.5 text-sm font-bold transition whitespace-nowrap">
                         ✖ Ukončit
                     </button>
                 </div>
@@ -228,7 +241,7 @@
         <p class="text-xs text-slate-500 uppercase tracking-widest font-semibold">
             Vytvořil <span class="text-orange-500 font-black">Wondraz</span> © 2026
         </p>
-        <span class="bg-slate-800 text-yellow-500 text-[10px] font-bold px-2 py-0.5 rounded border border-yellow-500/30">VERZE 26 (COUNTDOWN ADJUST)</span>
+        <span class="bg-slate-800 text-yellow-500 text-[10px] font-bold px-2 py-0.5 rounded border border-yellow-500/30">VERZE 28 (IG HUD FIX)</span>
     </footer>
 
     <input type="file" id="fileInput" accept=".gpx" style="display:none;" />
@@ -454,13 +467,26 @@
         }
 
         function updatePlayUI() {
-            const btnPlay = document.getElementById('btnStudioPlay');
-            if(isPlaying) {
-                btnPlay.innerText = "⏸ Pauza";
-                btnPlay.classList.replace('bg-emerald-600', 'bg-amber-600');
-            } else {
-                btnPlay.innerText = "▶ Letět (Bez záznamu)";
-                btnPlay.classList.replace('bg-amber-600', 'bg-emerald-600');
+            // Tlačítko na hlavní stránce
+            const btnPlayIcon = document.getElementById('playIcon');
+            const btnPlayText = document.getElementById('playText');
+            if(btnPlayIcon && btnPlayText) {
+                btnPlayIcon.innerText = isPlaying ? "⏸" : "▶";
+                btnPlayText.innerText = isPlaying ? "Pozastavit let" : "Testovací let (Zde, s menu)";
+            }
+
+            // Tlačítko ve studiu
+            const btnStudioPlay = document.getElementById('btnStudioPlay');
+            if(btnStudioPlay) {
+                if(isPlaying) {
+                    btnStudioPlay.innerText = "⏸ Pauza";
+                    btnStudioPlay.classList.replace('bg-emerald-600', 'bg-amber-600');
+                    btnStudioPlay.classList.replace('hover:bg-emerald-500', 'hover:bg-amber-500');
+                } else {
+                    btnStudioPlay.innerText = "▶ Letět (Bez záznamu)";
+                    btnStudioPlay.classList.replace('bg-amber-600', 'bg-emerald-600');
+                    btnStudioPlay.classList.replace('hover:bg-amber-500', 'hover:bg-emerald-500');
+                }
             }
         }
 
@@ -503,6 +529,7 @@
                 const recordDot = document.getElementById('recordDot');
                 
                 btnRec.classList.replace('bg-red-600', 'bg-slate-800');
+                btnRec.classList.replace('hover:bg-red-500', 'hover:bg-slate-700');
                 recordDot.classList.add('pulse-recording');
 
                 mediaRecorder = new MediaRecorder(stream, { mimeType: videoMimeType, videoBitsPerSecond: 14000000 });
@@ -513,6 +540,7 @@
                     if(countdownInterval) clearInterval(countdownInterval);
                     
                     btnRec.classList.replace('bg-slate-800', 'bg-red-600');
+                    btnRec.classList.replace('hover:bg-slate-700', 'hover:bg-red-500');
                     btnText.innerText = "Nahrávat obraz";
                     recordDot.classList.remove('pulse-recording');
                     
@@ -533,7 +561,6 @@
 
                 mediaRecorder.start();
 
-                // NOVINKA: PRODLOUŽENÝ ODPOČET NA 6 VTEŘIN
                 let countdown = 6;
                 btnText.innerText = `Skryje se za ${countdown}...`;
                 
@@ -730,18 +757,7 @@
 
             document.getElementById('speedSelector').addEventListener('change', (e) => speedFactor = parseInt(e.target.value));
             
-            // NOVINKA: PŘEPÍNAČ FORMÁTU (16:9 vs 9:16 IG)
-            const formatDiv = document.createElement('div');
-            formatDiv.className = "flex flex-col gap-1 mt-2";
-            formatDiv.innerHTML = `
-                <span class="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Formát videa</span>
-                <select id="formatSelector" class="bg-slate-800 border border-slate-700 rounded-lg px-2 py-1.5 text-[11px] font-semibold text-white outline-none w-full cursor-pointer">
-                    <option value="16-9" selected>🎬 Na šířku (16:9 - YT)</option>
-                    <option value="9-16">📱 Na výšku (9:16 - IG Reels)</option>
-                </select>
-            `;
-            document.getElementById('speedSelector').parentNode.parentNode.appendChild(formatDiv);
-
+            // PŘEPÍNAČ FORMÁTU (16:9 vs 9:16 IG)
             document.getElementById('formatSelector').addEventListener('change', (e) => {
                 if (e.target.value === '9-16') {
                     document.body.classList.add('format-ig');
@@ -754,6 +770,11 @@
             document.getElementById('btnStudioMode').addEventListener('click', enterStudioMode);
             document.getElementById('btnStudioExit').addEventListener('click', exitStudioMode);
             
+            // OPRAVA: Připojení tlačítka i na hlavní stránce
+            document.getElementById('btnPlay').addEventListener('click', () => {
+                if(isPlaying) stopFlyover(); else cinematicStart();
+            });
+
             document.getElementById('btnStudioPlay').addEventListener('click', () => {
                 if(isPlaying) stopFlyover(); else cinematicStart();
             });
