@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GPX 3D Trail Director</title>
+    
+    <link rel="preconnect" href="https://server.arcgisonline.com" crossorigin>
+    <link rel="preconnect" href="https://s3.amazonaws.com" crossorigin>
+    <link rel="preconnect" href="https://demotiles.maplibre.org" crossorigin>
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/maplibre-gl@4.3.2/dist/maplibre-gl.js"></script>
     <link href="https://unpkg.com/maplibre-gl@4.3.2/dist/maplibre-gl.css" rel="stylesheet" />
@@ -13,6 +18,12 @@
             width: 100%; aspect-ratio: 16 / 9; position: relative;
             background: #050505; border-radius: 1.25rem; overflow: hidden;
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7); transition: all 0.3s ease;
+        }
+        /* Fullscreen mód jen pro HD rendering, bez natáčení obrazovky */
+        .recording-mode {
+            position: fixed !important; top: 0 !important; left: 0 !important;
+            width: 100vw !important; height: 100vh !important;
+            z-index: 99999 !important; border-radius: 0 !important;
         }
         #map { position: absolute; top: 0; left: 0; right: 0; bottom: 0; outline: none; }
         
@@ -35,7 +46,7 @@
                 </div>
                 <div>
                     <h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
-                        GPX 3D Trail Director <span class="bg-blue-500/10 text-blue-400 text-[10px] px-2.5 py-0.5 rounded-full uppercase font-extrabold border border-blue-500/30">STUDIO (SILENT RECORD)</span>
+                        GPX 3D Trail Director <span class="bg-blue-500/10 text-blue-400 text-[10px] px-2.5 py-0.5 rounded-full uppercase font-extrabold border border-blue-500/30">STUDIO</span>
                     </h1>
                 </div>
             </div>
@@ -120,7 +131,7 @@
                     <button id="btnRecord" class="bg-red-600 hover:bg-red-500 text-white font-bold py-3 px-4 rounded-xl transition flex flex-col justify-center items-center text-xs shadow-lg shadow-red-900/20">
                         <div class="flex items-center gap-2">
                             <span class="w-2.5 h-2.5 bg-white rounded-full pulse-recording inline-block" id="recordPulse"></span>
-                            <span id="recordText" class="text-sm">Nahrát tiché video na pozadí</span>
+                            <span id="recordText" class="text-sm">Nahrát čisté video</span>
                         </div>
                         <span id="formatText" class="text-[9px] text-red-200 mt-0.5 font-normal tracking-wide">Studio formát připraven</span>
                     </button>
@@ -172,11 +183,14 @@
         </div>
     </main>
 
-    <footer class="w-full py-6 mt-auto border-t border-slate-900 bg-slate-950 text-center">
+    <footer class="w-full py-6 mt-auto border-t border-slate-900 bg-slate-950 flex justify-center items-center gap-3">
         <p class="text-xs text-slate-500 uppercase tracking-widest font-semibold">
             Vytvořil <span class="text-amber-500 font-black">Wondraz</span> © 2026
         </p>
+        <span class="bg-slate-800 text-yellow-500 text-[10px] font-bold px-2 py-0.5 rounded border border-yellow-500/30">VERZE 18</span>
     </footer>
+
+    <input type="file" id="fileInput" accept=".gpx" style="display:none;" />
 
     <script>
         let map;
@@ -215,7 +229,7 @@
         function initMap() {
             map = new maplibregl.Map({
                 container: 'map',
-                preserveDrawingBuffer: true, // KLÍČOVÉ PRO SILENT RECORDING (Dovoluje kopírovat GPU plátno)
+                preserveDrawingBuffer: true, 
                 style: {
                     version: 8,
                     glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
@@ -230,7 +244,8 @@
                     ],
                     terrain: { source: 'terrainSource', exaggeration: 1.8 } 
                 },
-                center: [15.732, 50.729], zoom: 12, pitch: 65, bearing: 0
+                center: [15.732, 50.729], zoom: 12, pitch: 65, bearing: 0,
+                fadeDuration: 100 // Urychluje zobrazení načtených dlaždic
             });
             map.setMaxPitch(85);
         }
@@ -248,7 +263,6 @@
             return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
         }
 
-        // KRESLENÍ GRAFU PRO NÁHLED NA WEBU
         function drawHUDProfile() {
             const container = document.getElementById('hud-profile-container');
             if (!gpxtrackData.length || !document.getElementById('showProfile').checked) {
@@ -261,7 +275,6 @@
             _drawProfileOntoContext(ctx, canvas.width, canvas.height);
         }
 
-        // UNIVERZÁLNÍ KRESLENÍ GRAFU (Použitelné pro náhled i nativní video)
         function _drawProfileOntoContext(ctx, W, H) {
             let minE = Infinity, maxE = -Infinity;
             gpxtrackData.forEach(p => { if(p.ele < minE) minE = p.ele; if(p.ele > maxE) maxE = p.ele; });
@@ -297,89 +310,100 @@
             }
         }
 
-        // NATIVNÍ VYKRESLENÍ VŠEHO DO JEDNOHO PLÁTNA (PRO ZÁZNAM VIDEA)
+        // NATIVNÍ VYKRESLENÍ VŠEHO DO JEDNOHO PLÁTNA (PRO ZÁZNAM VIDEA BEZ LIŠT)
         function drawCompositeVideoFrame(dist, ele, eleGain) {
             if (!isRecording) return;
             
-            // 1. Zkopírovat 3D Mapu
             const mapCanvas = map.getCanvas();
-            recordCtx.clearRect(0, 0, 1920, 1080);
-            recordCtx.drawImage(mapCanvas, 0, 0, 1920, 1080);
+            // Upravíme nahrávací plátno přesně na rozměry zvětšené mapy
+            const W = mapCanvas.width;
+            const H = mapCanvas.height;
+            if(recordCanvas.width !== W) recordCanvas.width = W;
+            if(recordCanvas.height !== H) recordCanvas.height = H;
 
-            // 2. Grafický stín pro HUD (aby byl text čitelný nad mapou)
+            recordCtx.clearRect(0, 0, W, H);
+            recordCtx.drawImage(mapCanvas, 0, 0, W, H);
+
+            // Respektujeme poměr pro fonty (pokud je monitor obří)
+            const scale = Math.max(1, W / 1920);
+
             recordCtx.shadowColor = 'rgba(0,0,0,0.8)';
-            recordCtx.shadowBlur = 15;
+            recordCtx.shadowBlur = 15 * scale;
 
-            // 3. Titulek
+            // Titulek
             const routeName = document.getElementById('customRouteName').value.trim().toUpperCase();
             if (routeName) {
-                recordCtx.font = '900 65px "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+                recordCtx.font = `900 ${65 * scale}px "Segoe UI", Roboto, Helvetica, Arial, sans-serif`;
                 recordCtx.fillStyle = 'white';
-                recordCtx.fillText(routeName, 80, 130);
+                recordCtx.fillText(routeName, 80 * scale, 130 * scale);
 
-                // Čára pod titulkem
-                recordCtx.fillStyle = '#f59e0b'; // Amber 500
-                recordCtx.shadowBlur = 20;
+                recordCtx.fillStyle = '#f59e0b';
+                recordCtx.shadowBlur = 20 * scale;
                 recordCtx.shadowColor = '#f59e0b';
-                recordCtx.fillRect(80, 160, 120, 10);
-                recordCtx.shadowBlur = 15; // Reset shadow for text
+                recordCtx.fillRect(80 * scale, 160 * scale, 120 * scale, 10 * scale);
+                recordCtx.shadowBlur = 15 * scale; 
                 recordCtx.shadowColor = 'rgba(0,0,0,0.8)';
             }
 
-            // 4. Nastoupané metry (pod titulkem)
+            // Nastoupané metry
             if (document.getElementById('showEleGain').checked) {
-                recordCtx.font = 'bold 26px "Segoe UI", sans-serif';
-                recordCtx.fillStyle = '#fbbf24'; // Amber 400
-                recordCtx.fillText(`NASTOUPÁNO:`, 80, 230);
+                recordCtx.font = `bold ${26 * scale}px "Segoe UI", sans-serif`;
+                recordCtx.fillStyle = '#fbbf24'; 
+                recordCtx.fillText(`NASTOUPÁNO:`, 80 * scale, 230 * scale);
                 recordCtx.fillStyle = 'white';
-                recordCtx.fillText(`${Math.round(eleGain)} m`, 270, 230);
+                recordCtx.fillText(`${Math.round(eleGain)} m`, 270 * scale, 230 * scale);
             }
 
-            // 5. Statistiky - Tmavý podklad
+            // Statistiky rámeček
+            const boxW = 600 * scale;
+            const boxH = 150 * scale;
+            const boxX = 80 * scale;
+            const boxY = H - (80 * scale) - boxH;
+
             recordCtx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-            recordCtx.shadowBlur = 30;
+            recordCtx.shadowBlur = 30 * scale;
             recordCtx.beginPath();
-            recordCtx.roundRect(80, 880, 600, 150, 30); // Zaoblený rámeček pro HUD
+            recordCtx.roundRect(boxX, boxY, boxW, boxH, 30 * scale); 
             recordCtx.fill();
-            recordCtx.shadowBlur = 15;
+            recordCtx.shadowBlur = 15 * scale;
 
             // Texty Ujetá Vzdálenost a Výška
-            recordCtx.font = 'bold 16px "Segoe UI", sans-serif';
-            recordCtx.fillStyle = '#fbbf24'; // Amber 400
-            recordCtx.fillText('UJETA VZDÁLENOST', 120, 930);
-            recordCtx.fillText('NADM. VÝŠKA', 400, 930);
+            recordCtx.font = `bold ${16 * scale}px "Segoe UI", sans-serif`;
+            recordCtx.fillStyle = '#fbbf24'; 
+            recordCtx.fillText('UJETA VZDÁLENOST', boxX + 40*scale, boxY + 50*scale);
+            recordCtx.fillText('NADM. VÝŠKA', boxX + 320*scale, boxY + 50*scale);
 
-            // Oddělovací čárka (Border Left)
+            // Oddělovací čárka
             recordCtx.fillStyle = 'rgba(255, 255, 255, 0.2)';
-            recordCtx.fillRect(360, 915, 2, 80);
+            recordCtx.fillRect(boxX + 280*scale, boxY + 35*scale, 2*scale, 80*scale);
 
             // Velká čísla
-            recordCtx.font = '900 65px "Segoe UI", sans-serif';
+            recordCtx.font = `900 ${65 * scale}px "Segoe UI", sans-serif`;
             recordCtx.fillStyle = 'white';
             const distStr = dist.toFixed(1);
-            recordCtx.fillText(distStr, 120, 1000);
-            recordCtx.fillText(Math.round(ele).toString(), 400, 1000);
+            recordCtx.fillText(distStr, boxX + 40*scale, boxY + 120*scale);
+            recordCtx.fillText(Math.round(ele).toString(), boxX + 320*scale, boxY + 120*scale);
 
-            // Malé jednotky km/m
-            recordCtx.font = 'bold 35px "Segoe UI", sans-serif';
-            recordCtx.fillStyle = '#cbd5e1'; // Slate 300
-            recordCtx.fillText('km', 125 + recordCtx.measureText(distStr).width, 1000);
-            recordCtx.fillText('m', 405 + recordCtx.measureText(Math.round(ele).toString()).width, 1000);
+            // Malé jednotky
+            recordCtx.font = `bold ${35 * scale}px "Segoe UI", sans-serif`;
+            recordCtx.fillStyle = '#cbd5e1'; 
+            recordCtx.fillText('km', boxX + 45*scale + recordCtx.measureText(distStr).width, boxY + 120*scale);
+            recordCtx.fillText('m', boxX + 325*scale + recordCtx.measureText(Math.round(ele).toString()).width, boxY + 120*scale);
 
-            // 6. Vodoznak vpravo nahoře
-            recordCtx.font = '900 22px "Segoe UI", sans-serif';
+            // Vodoznak
+            recordCtx.font = `900 ${22 * scale}px "Segoe UI", sans-serif`;
             recordCtx.fillStyle = 'rgba(255,255,255,0.5)';
             const txtW = recordCtx.measureText('TRAIL DIRECTOR 3D').width;
-            recordCtx.fillText('TRAIL DIRECTOR ', 1920 - txtW - 80, 100);
+            recordCtx.fillText('TRAIL DIRECTOR ', W - txtW - (80*scale), 100*scale);
             recordCtx.fillStyle = 'rgba(245,158,11,0.5)';
-            recordCtx.fillText('3D', 1920 - 80 - recordCtx.measureText('3D').width + 5, 100);
+            recordCtx.fillText('3D', W - (80*scale) - recordCtx.measureText('3D').width + (5*scale), 100*scale);
 
-            // 7. Plovoucí profil nad statistikami
+            // Plovoucí profil
             if (document.getElementById('showProfile').checked && gpxtrackData.length > 0) {
-                recordCtx.save(); // Uložení kontextu
-                recordCtx.translate(80, 680); // Posun kreslení profilu
-                _drawProfileOntoContext(recordCtx, 1760, 180);
-                recordCtx.restore(); // Návrat do původního stavu
+                recordCtx.save(); 
+                recordCtx.translate(boxX, boxY - (200*scale)); 
+                _drawProfileOntoContext(recordCtx, W - (160*scale), 180*scale);
+                recordCtx.restore();
             }
         }
 
@@ -494,7 +518,8 @@
             document.getElementById('eleGainVal').innerText = Math.round(exactEleGain) + " m";
 
             drawHUDProfile();
-            drawCompositeVideoFrame(exactDist, exactEle, exactEleGain); // SKRYTÉ KRESLENÍ VIDEA
+            // VOLÁME SKRYTÉ KRESLENÍ PRO VIDEO NA POZADÍ
+            drawCompositeVideoFrame(exactDist, exactEle, exactEleGain); 
 
             let lineProgress = Math.max(0.0001, Math.min(1, exactDist / totalTrackDistance));
             map.setPaintProperty('route-glow', 'line-gradient', ['step', ['line-progress'], '#f97316', lineProgress, 'rgba(0,0,0,0)']);
@@ -522,13 +547,20 @@
             document.getElementById('playText').innerText = isPlaying ? "Pozastavit let" : "Odstartovat let";
         }
 
-        // TICHÉ NAHRÁVÁNÍ POMOCÍ CAPTURESTREAM() (Bez otravných oken sdílení obrazovky)
+        // TICHÉ NAHRÁVÁNÍ (BEZ WIDGETU PRO SDÍLENÍ OBRAZOVKY)
         async function startRecording() {
             if (isRecording) return;
             try {
                 stopFlyover();
+                
+                // Roztáhne mapu přes okno jen aby grafika měla co nejvíc pixelů
+                const mapWrapper = document.getElementById('map-wrapper');
+                mapWrapper.classList.add('recording-mode');
+                map.resize();
+                
+                await new Promise(r => setTimeout(r, 500)); // Počkat na překreslení do HD
 
-                // Vyvoláme zachytávání z našeho skrytého mixážního pultu (Canvas)
+                // ZACHYTÁVÁME SKRYTÝ CANVAS, NE OBRAZOVKU UŽIVATELE!
                 const stream = recordCanvas.captureStream(60); 
                 recordedChunks = []; isRecording = true;
                 
@@ -540,8 +572,11 @@
                 mediaRecorder.onstop = () => {
                     isRecording = false;
                     document.getElementById('btnRecord').classList.replace('bg-slate-800', 'bg-red-600');
-                    document.getElementById('recordText').innerText = "Nahrát video (Bez UI)";
+                    document.getElementById('recordText').innerText = "Nahrát čisté video";
                     
+                    mapWrapper.classList.remove('recording-mode');
+                    setTimeout(() => map.resize(), 300);
+
                     const blob = new Blob(recordedChunks, { type: videoMimeType });
                     const url = URL.createObjectURL(blob);
                     const a = document.createElement('a'); a.style.display = 'none'; a.href = url;
@@ -555,11 +590,12 @@
                 };
 
                 mediaRecorder.start();
-                // Spustíme animaci po krátké pauze pro inicializaci Canvasu
                 setTimeout(() => { cinematicStart(); }, 200);
             } catch (err) {
                 console.error(err);
                 alert("Nahrávání selhalo. Zkontrolujte nastavení prohlížeče.");
+                document.getElementById('map-wrapper').classList.remove('recording-mode');
+                map.resize();
             }
         }
 
