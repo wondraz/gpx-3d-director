@@ -19,7 +19,6 @@
             background: #050505; border-radius: 1.25rem; overflow: hidden;
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7); transition: all 0.3s ease;
         }
-        /* Fullscreen mód jen pro HD rendering, bez natáčení obrazovky */
         .recording-mode {
             position: fixed !important; top: 0 !important; left: 0 !important;
             width: 100vw !important; height: 100vh !important;
@@ -68,14 +67,14 @@
     <main class="max-w-7xl mx-auto w-full px-4 py-6 flex-1 grid grid-cols-1 lg:grid-cols-4 gap-6">
         
         <div class="lg:col-span-1 flex flex-col gap-5">
-            
             <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl">
                 <h2 class="font-bold text-slate-400 mb-2 text-xs uppercase tracking-wider">1. Trasa a Název</h2>
+                
                 <div id="dropzone" class="border-2 border-dashed border-slate-700 hover:border-amber-500 rounded-xl p-6 text-center cursor-pointer transition-all bg-slate-950/50 mb-3 flex flex-col items-center justify-center">
-                    <input type="file" id="fileInput" accept=".gpx" class="hidden" />
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-slate-500 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
                     <p class="text-xs font-semibold text-slate-300" id="dropzoneText">Klikni nebo přetáhni .GPX</p>
                 </div>
+                
                 <div id="nameInputWrapper" style="display:none; opacity:0; transition: opacity 0.4s;">
                     <label class="text-[10px] text-slate-500 uppercase font-bold tracking-wider block mb-1">Název ve videu (smaž pro skrytí):</label>
                     <input type="text" id="customRouteName" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white font-bold outline-none focus:border-amber-500 transition-all" />
@@ -131,7 +130,7 @@
                     <button id="btnRecord" class="bg-red-600 hover:bg-red-500 text-white font-bold py-3 px-4 rounded-xl transition flex flex-col justify-center items-center text-xs shadow-lg shadow-red-900/20">
                         <div class="flex items-center gap-2">
                             <span class="w-2.5 h-2.5 bg-white rounded-full pulse-recording inline-block" id="recordPulse"></span>
-                            <span id="recordText" class="text-sm">Nahrát čisté video</span>
+                            <span id="recordText" class="text-sm">Nahrát tiché video na pozadí</span>
                         </div>
                         <span id="formatText" class="text-[9px] text-red-200 mt-0.5 font-normal tracking-wide">Studio formát připraven</span>
                     </button>
@@ -187,7 +186,7 @@
         <p class="text-xs text-slate-500 uppercase tracking-widest font-semibold">
             Vytvořil <span class="text-amber-500 font-black">Wondraz</span> © 2026
         </p>
-        <span class="bg-slate-800 text-yellow-500 text-[10px] font-bold px-2 py-0.5 rounded border border-yellow-500/30">VERZE 18</span>
+        <span class="bg-slate-800 text-amber-500 text-[10px] font-bold px-2 py-0.5 rounded border border-amber-500/30">VERZE 19 (STABLE)</span>
     </footer>
 
     <input type="file" id="fileInput" accept=".gpx" style="display:none;" />
@@ -208,14 +207,11 @@
 
         let smoothLat = null; let smoothLon = null; let smoothBearing = null; let smoothPitch = 65;
         
-        // VIDEO RECORDING
         let mediaRecorder = null; let recordedChunks = []; let isRecording = false;
         let videoMimeType = 'video/webm;codecs=vp9'; let videoExt = 'webm';
         
-        // VIRTUÁLNÍ CANVAS PRO SKRYTÉ NAHRÁVÁNÍ HUD + MAPY
         const recordCanvas = document.createElement('canvas');
-        recordCanvas.width = 1920;
-        recordCanvas.height = 1080;
+        recordCanvas.width = 1920; recordCanvas.height = 1080;
         const recordCtx = recordCanvas.getContext('2d');
 
         function checkVideoFormatSupport() {
@@ -244,8 +240,7 @@
                     ],
                     terrain: { source: 'terrainSource', exaggeration: 1.8 } 
                 },
-                center: [15.732, 50.729], zoom: 12, pitch: 65, bearing: 0,
-                fadeDuration: 100 // Urychluje zobrazení načtených dlaždic
+                center: [15.732, 50.729], zoom: 12, pitch: 65, bearing: 0, fadeDuration: 100
             });
             map.setMaxPitch(85);
         }
@@ -310,27 +305,22 @@
             }
         }
 
-        // NATIVNÍ VYKRESLENÍ VŠEHO DO JEDNOHO PLÁTNA (PRO ZÁZNAM VIDEA BEZ LIŠT)
         function drawCompositeVideoFrame(dist, ele, eleGain) {
             if (!isRecording) return;
             
             const mapCanvas = map.getCanvas();
-            // Upravíme nahrávací plátno přesně na rozměry zvětšené mapy
-            const W = mapCanvas.width;
-            const H = mapCanvas.height;
+            const W = mapCanvas.width; const H = mapCanvas.height;
             if(recordCanvas.width !== W) recordCanvas.width = W;
             if(recordCanvas.height !== H) recordCanvas.height = H;
 
             recordCtx.clearRect(0, 0, W, H);
             recordCtx.drawImage(mapCanvas, 0, 0, W, H);
 
-            // Respektujeme poměr pro fonty (pokud je monitor obří)
             const scale = Math.max(1, W / 1920);
 
             recordCtx.shadowColor = 'rgba(0,0,0,0.8)';
             recordCtx.shadowBlur = 15 * scale;
 
-            // Titulek
             const routeName = document.getElementById('customRouteName').value.trim().toUpperCase();
             if (routeName) {
                 recordCtx.font = `900 ${65 * scale}px "Segoe UI", Roboto, Helvetica, Arial, sans-serif`;
@@ -338,14 +328,11 @@
                 recordCtx.fillText(routeName, 80 * scale, 130 * scale);
 
                 recordCtx.fillStyle = '#f59e0b';
-                recordCtx.shadowBlur = 20 * scale;
-                recordCtx.shadowColor = '#f59e0b';
+                recordCtx.shadowBlur = 20 * scale; recordCtx.shadowColor = '#f59e0b';
                 recordCtx.fillRect(80 * scale, 160 * scale, 120 * scale, 10 * scale);
-                recordCtx.shadowBlur = 15 * scale; 
-                recordCtx.shadowColor = 'rgba(0,0,0,0.8)';
+                recordCtx.shadowBlur = 15 * scale; recordCtx.shadowColor = 'rgba(0,0,0,0.8)';
             }
 
-            // Nastoupané metry
             if (document.getElementById('showEleGain').checked) {
                 recordCtx.font = `bold ${26 * scale}px "Segoe UI", sans-serif`;
                 recordCtx.fillStyle = '#fbbf24'; 
@@ -354,43 +341,30 @@
                 recordCtx.fillText(`${Math.round(eleGain)} m`, 270 * scale, 230 * scale);
             }
 
-            // Statistiky rámeček
-            const boxW = 600 * scale;
-            const boxH = 150 * scale;
-            const boxX = 80 * scale;
-            const boxY = H - (80 * scale) - boxH;
-
+            const boxW = 600 * scale, boxH = 150 * scale, boxX = 80 * scale, boxY = H - (80 * scale) - boxH;
             recordCtx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-            recordCtx.shadowBlur = 30 * scale;
-            recordCtx.beginPath();
-            recordCtx.roundRect(boxX, boxY, boxW, boxH, 30 * scale); 
-            recordCtx.fill();
+            recordCtx.shadowBlur = 30 * scale; recordCtx.beginPath();
+            recordCtx.roundRect(boxX, boxY, boxW, boxH, 30 * scale); recordCtx.fill();
             recordCtx.shadowBlur = 15 * scale;
 
-            // Texty Ujetá Vzdálenost a Výška
             recordCtx.font = `bold ${16 * scale}px "Segoe UI", sans-serif`;
             recordCtx.fillStyle = '#fbbf24'; 
             recordCtx.fillText('UJETA VZDÁLENOST', boxX + 40*scale, boxY + 50*scale);
             recordCtx.fillText('NADM. VÝŠKA', boxX + 320*scale, boxY + 50*scale);
-
-            // Oddělovací čárka
             recordCtx.fillStyle = 'rgba(255, 255, 255, 0.2)';
             recordCtx.fillRect(boxX + 280*scale, boxY + 35*scale, 2*scale, 80*scale);
 
-            // Velká čísla
             recordCtx.font = `900 ${65 * scale}px "Segoe UI", sans-serif`;
             recordCtx.fillStyle = 'white';
             const distStr = dist.toFixed(1);
             recordCtx.fillText(distStr, boxX + 40*scale, boxY + 120*scale);
             recordCtx.fillText(Math.round(ele).toString(), boxX + 320*scale, boxY + 120*scale);
 
-            // Malé jednotky
             recordCtx.font = `bold ${35 * scale}px "Segoe UI", sans-serif`;
             recordCtx.fillStyle = '#cbd5e1'; 
             recordCtx.fillText('km', boxX + 45*scale + recordCtx.measureText(distStr).width, boxY + 120*scale);
             recordCtx.fillText('m', boxX + 325*scale + recordCtx.measureText(Math.round(ele).toString()).width, boxY + 120*scale);
 
-            // Vodoznak
             recordCtx.font = `900 ${22 * scale}px "Segoe UI", sans-serif`;
             recordCtx.fillStyle = 'rgba(255,255,255,0.5)';
             const txtW = recordCtx.measureText('TRAIL DIRECTOR 3D').width;
@@ -398,12 +372,9 @@
             recordCtx.fillStyle = 'rgba(245,158,11,0.5)';
             recordCtx.fillText('3D', W - (80*scale) - recordCtx.measureText('3D').width + (5*scale), 100*scale);
 
-            // Plovoucí profil
             if (document.getElementById('showProfile').checked && gpxtrackData.length > 0) {
-                recordCtx.save(); 
-                recordCtx.translate(boxX, boxY - (200*scale)); 
-                _drawProfileOntoContext(recordCtx, W - (160*scale), 180*scale);
-                recordCtx.restore();
+                recordCtx.save(); recordCtx.translate(boxX, boxY - (200*scale)); 
+                _drawProfileOntoContext(recordCtx, W - (160*scale), 180*scale); recordCtx.restore();
             }
         }
 
@@ -518,7 +489,6 @@
             document.getElementById('eleGainVal').innerText = Math.round(exactEleGain) + " m";
 
             drawHUDProfile();
-            // VOLÁME SKRYTÉ KRESLENÍ PRO VIDEO NA POZADÍ
             drawCompositeVideoFrame(exactDist, exactEle, exactEleGain); 
 
             let lineProgress = Math.max(0.0001, Math.min(1, exactDist / totalTrackDistance));
@@ -547,20 +517,17 @@
             document.getElementById('playText').innerText = isPlaying ? "Pozastavit let" : "Odstartovat let";
         }
 
-        // TICHÉ NAHRÁVÁNÍ (BEZ WIDGETU PRO SDÍLENÍ OBRAZOVKY)
         async function startRecording() {
             if (isRecording) return;
             try {
                 stopFlyover();
                 
-                // Roztáhne mapu přes okno jen aby grafika měla co nejvíc pixelů
                 const mapWrapper = document.getElementById('map-wrapper');
                 mapWrapper.classList.add('recording-mode');
                 map.resize();
                 
-                await new Promise(r => setTimeout(r, 500)); // Počkat na překreslení do HD
+                await new Promise(r => setTimeout(r, 500)); 
 
-                // ZACHYTÁVÁME SKRYTÝ CANVAS, NE OBRAZOVKU UŽIVATELE!
                 const stream = recordCanvas.captureStream(60); 
                 recordedChunks = []; isRecording = true;
                 
@@ -572,7 +539,7 @@
                 mediaRecorder.onstop = () => {
                     isRecording = false;
                     document.getElementById('btnRecord').classList.replace('bg-slate-800', 'bg-red-600');
-                    document.getElementById('recordText').innerText = "Nahrát čisté video";
+                    document.getElementById('recordText').innerText = "Nahrát tiché video na pozadí";
                     
                     mapWrapper.classList.remove('recording-mode');
                     setTimeout(() => map.resize(), 300);
@@ -601,13 +568,17 @@
 
         function stopRecording() { if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop(); }
 
+        // BEZPEČNÉ PARSOVÁNÍ SE SPRÁVNYM ODDĚLENÍM CHYB
         function safeParseGPX(xmlText, fileName) {
+            let pts = [], dist = 0, eleGain = 0;
             try {
                 const xml = new DOMParser().parseFromString(xmlText, 'text/xml');
                 const trkpts = xml.getElementsByTagName('trkpt');
-                if (!trkpts || trkpts.length === 0) { alert("Tento GPX soubor neobsahuje žádnou trasu."); return; }
+                if (!trkpts || trkpts.length === 0) { 
+                    alert("Tento GPX soubor neobsahuje žádnou trasu (chybí <trkpt>)."); 
+                    return; 
+                }
 
-                let pts = [], dist = 0, eleGain = 0;
                 for (let i = 0; i < trkpts.length; i++) {
                     const latNode = trkpts[i].getAttribute('lat'), lonNode = trkpts[i].getAttribute('lon');
                     if(!latNode || !lonNode) continue; 
@@ -626,12 +597,27 @@
                 
                 if(pts.length < 2) { alert("Trasa je příliš krátká."); return; }
                 totalElevationGain = Math.round(eleGain);
-                
-                const cleanName = fileName.replace(/\.[^/.]+$/, "");
-                loadGPXData(pts, dist, cleanName.toUpperCase());
-                
                 document.getElementById('dropzoneText').innerText = `✅ Načteno: ${pts.length} bodů`;
-            } catch(e) { alert("Nepodařilo se přečíst GPX soubor."); }
+            } catch(e) { 
+                console.error("Chyba čtení XML:", e);
+                alert("Nepodařilo se přečíst text GPX souboru."); 
+                return;
+            }
+
+            // Ochrana před chybou nedočtené mapy
+            try {
+                const cleanName = fileName.replace(/\.[^/.]+$/, "");
+                
+                if (map.isStyleLoaded()) {
+                    loadGPXData(pts, dist, cleanName.toUpperCase());
+                } else {
+                    // Počkáme až se mapa vzpamatuje
+                    map.once('styledata', () => loadGPXData(pts, dist, cleanName.toUpperCase()));
+                }
+            } catch(e) { 
+                console.error("Chyba vizualizace:", e);
+                alert("Chyba při zobrazení do mapy: " + e.message); 
+            }
         }
 
         function loadGPXData(pts, dist, routeName) {
@@ -670,8 +656,8 @@
             const dropzone = document.getElementById('dropzone');
             const fileInput = document.getElementById('fileInput');
 
-            dropzone.addEventListener('click', (e) => {
-                if(e.target !== fileInput) fileInput.click();
+            dropzone.addEventListener('click', () => {
+                fileInput.click();
             });
             
             fileInput.addEventListener('change', (e) => {
@@ -717,7 +703,10 @@
                     pts.push({ lat, lon, ele, dist, eleGain });
                 }
                 totalElevationGain = Math.round(eleGain);
-                loadGPXData(pts, dist, "VÝŠLAP NA SNĚŽKU 🏔️");
+                
+                // Oprava pro testovací tlačítko (čekání na mapu)
+                if (map.isStyleLoaded()) { loadGPXData(pts, dist, "VÝŠLAP NA SNĚŽKU 🏔️"); } 
+                else { map.once('styledata', () => loadGPXData(pts, dist, "VÝŠLAP NA SNĚŽKU 🏔️")); }
             });
 
             document.getElementById('styleSat').addEventListener('click', (e) => {
