@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GPX 3D Trail Director V29 - Smart Studio</title>
+    <title>GPX 3D Trail Director V30 - Ultimate IG Studio</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/maplibre-gl@4.3.2/dist/maplibre-gl.js"></script>
@@ -216,10 +216,7 @@
                     <span class="text-xs sm:text-sm font-black text-white tracking-widest uppercase">Trail Director <span class="text-orange-500">3D</span></span>
                 </div>
                 
-                <div id="studio-controls" class="fixed bottom-8 left-8 bg-slate-900/90 backdrop-blur-md border border-slate-700 p-3 rounded-2xl flex items-center gap-3 z-[999999] shadow-2xl transition-opacity duration-500 w-auto" style="display:none;">
-                    <div class="absolute -top-6 left-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-black/50 px-2 py-0.5 rounded">
-                        💡 Klávesy: Mezerník = Start/Pauza | ESC = Odejít
-                    </div>
+                <div id="studio-controls" class="absolute bottom-8 left-1/2 -translate-x-1/2 bg-slate-900/95 backdrop-blur-md border border-slate-700 p-3 rounded-2xl flex items-center gap-3 z-[999999] shadow-2xl transition-opacity duration-500 w-[90%] sm:w-auto overflow-x-auto" style="display:none;">
                     <button id="btnStudioFullscreen" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2.5 rounded-xl text-sm font-bold transition flex items-center gap-2 whitespace-nowrap">
                         ⛶ Fullscreen
                     </button>
@@ -244,7 +241,7 @@
         <p class="text-xs text-slate-500 uppercase tracking-widest font-semibold">
             Vytvořil <span class="text-orange-500 font-black">Wondraz</span> © 2026
         </p>
-        <span class="bg-slate-800 text-yellow-500 text-[10px] font-bold px-2 py-0.5 rounded border border-yellow-500/30">VERZE 29 (SMART STUDIO)</span>
+        <span class="bg-slate-800 text-yellow-500 text-[10px] font-bold px-2 py-0.5 rounded border border-yellow-500/30">VERZE 30 (IG ABSOLUTE)</span>
     </footer>
 
     <input type="file" id="fileInput" accept=".gpx" style="display:none;" />
@@ -409,7 +406,7 @@
                 map.jumpTo({ center: [gpxtrackData[0].lon, gpxtrackData[0].lat], zoom: 12, pitch: 30, bearing: 0 });
                 await new Promise(r => setTimeout(r, 400));
                 
-                // SKRÝT MENU BĚHEM LETU, ABY NEBYLO VE VIDEU
+                // SKRYTÍ PANELU: Okamžitě zmizí na startu letu
                 if (inStudioMode) {
                     document.getElementById('studio-controls').style.opacity = '0';
                     document.getElementById('studio-controls').style.pointerEvents = 'none';
@@ -494,16 +491,16 @@
                     btnStudioPlay.innerText = "⏸ Pauza";
                     btnStudioPlay.classList.replace('bg-emerald-600', 'bg-amber-600');
                     
-                    // Schováme menu pokud letíme
+                    // Schováme panel pokud letíme
                     if (inStudioMode) {
                         document.getElementById('studio-controls').style.opacity = '0';
                         document.getElementById('studio-controls').style.pointerEvents = 'none';
                     }
                 } else {
-                    btnStudioPlay.innerText = "▶ Letět (Bez záznamu)";
+                    btnStudioPlay.innerText = "▶ Letět";
                     btnStudioPlay.classList.replace('bg-amber-600', 'bg-emerald-600');
                     
-                    // Zobrazíme menu pokud je pauza
+                    // Zobrazíme panel pokud stojíme
                     if (inStudioMode) {
                         document.getElementById('studio-controls').style.opacity = '1';
                         document.getElementById('studio-controls').style.pointerEvents = 'auto';
@@ -528,23 +525,21 @@
             stopFlyover();
             if(isRecording) stopStudioRecording();
             if (document.fullscreenElement) document.exitFullscreen();
-            if(countdownInterval) clearInterval(countdownInterval);
+            if(countdownInterval) clearTimeout(countdownInterval);
 
             document.body.classList.remove('studio-mode-active');
             document.getElementById('studio-controls').style.display = 'none';
             map.resize();
         }
 
-        // --- KLÁVESOVÉ ZKRATKY (Vráceno!) ---
+        // KLÁVESOVÉ ZKRATKY
         window.addEventListener('keydown', (e) => {
-            // Mezerník (Play / Pause)
             if (e.code === 'Space') {
-                if(e.target === document.body || inStudioMode) e.preventDefault(); // zabrání scrollování stránky
+                if(e.target === document.body || inStudioMode) e.preventDefault();
                 if (gpxtrackData.length > 0) {
                     if (isPlaying) stopFlyover(); else cinematicStart();
                 }
             }
-            // ESC (Ukončit Studio Mód)
             if (e.code === 'Escape' && inStudioMode) {
                 exitStudioMode();
             }
@@ -565,15 +560,16 @@
                 const btnText = document.getElementById('recordBtnText');
                 const recordDot = document.getElementById('recordDot');
                 
-                btnRec.classList.replace('bg-red-600', 'bg-slate-800');
-                recordDot.classList.add('pulse-recording');
+                // OKAMŽITÉ SKRYTÍ: Panel hned zmizí pro čistý start videa
+                document.getElementById('studio-controls').style.opacity = '0';
+                document.getElementById('studio-controls').style.pointerEvents = 'none';
 
                 mediaRecorder = new MediaRecorder(stream, { mimeType: videoMimeType, videoBitsPerSecond: 14000000 });
                 mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); };
                 
                 mediaRecorder.onstop = () => {
                     isRecording = false;
-                    if(countdownInterval) clearInterval(countdownInterval);
+                    if(countdownInterval) clearTimeout(countdownInterval);
                     
                     btnRec.classList.replace('bg-slate-800', 'bg-red-600');
                     btnText.innerText = "Nahrávat obraz";
@@ -594,26 +590,19 @@
                     stream.getTracks().forEach(track => track.stop());
                 };
 
+                // Zajištění stopu pokud uživatel klikne na nativní lištu prohlížeče "Zastavit sdílení"
+                stream.getVideoTracks()[0].onended = () => {
+                    if (isRecording) stopStudioRecording();
+                };
+
                 mediaRecorder.start();
 
-                let countdown = 6;
-                btnText.innerText = `Skryje se za ${countdown}...`;
-                
-                countdownInterval = setInterval(() => {
-                    if(!isRecording) { clearInterval(countdownInterval); return; }
-                    countdown--;
-                    if (countdown > 0) {
-                        btnText.innerText = `Skryje se za ${countdown}...`;
-                    } else {
-                        clearInterval(countdownInterval);
-                        btnText.innerText = "Ukončit nahrávání";
-                        
-                        // SKRYTÍ MENU
-                        document.getElementById('studio-controls').style.opacity = '0';
-                        document.getElementById('studio-controls').style.pointerEvents = 'none';
+                // 6 VTEŘIN ČISTÁ PRODLEVA (Kamera čeká na startovní pozici, menu je už pryč a lišty mizí)
+                countdownInterval = setTimeout(() => {
+                    if (isRecording) {
                         cinematicStart();
                     }
-                }, 1000);
+                }, 6000);
 
             } catch(e) {
                 console.log("Nahrávání zrušeno", e);
@@ -794,7 +783,6 @@
 
             document.getElementById('speedSelector').addEventListener('change', (e) => speedFactor = parseInt(e.target.value));
             
-            // PŘEPÍNAČ FORMÁTU
             document.getElementById('formatSelector').addEventListener('change', (e) => {
                 if (e.target.value === '9-16') {
                     document.body.classList.add('format-ig');
