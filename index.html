@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GPX 3D Trail Director V37 - Silent Canvas Recording</title>
+    <title>GPX 3D Trail Director V38 - Smooth Recording Optimization</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/maplibre-gl@4.3.2/dist/maplibre-gl.js"></script>
@@ -50,9 +50,6 @@
         
         @keyframes popIn { 0% { transform: scale(0.5); opacity: 0; } 70% { transform: scale(1.2); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
         .anim-pop { animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
-        
-        @keyframes pulseRec { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
-        .pulse-recording { animation: pulseRec 1.5s infinite; }
     </style>
 </head>
 <body class="bg-slate-950 text-slate-100 font-sans min-h-screen flex flex-col overflow-x-hidden">
@@ -67,7 +64,7 @@
                 </div>
                 <div>
                     <h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
-                        GPX 3D Trail Director <span class="bg-orange-500/10 text-orange-400 text-[10px] px-2.5 py-0.5 rounded-full uppercase font-extrabold border border-orange-500/30">V37 SILENT REC</span>
+                        GPX 3D Trail Director <span class="bg-orange-500/10 text-orange-400 text-[10px] px-2.5 py-0.5 rounded-full uppercase font-extrabold border border-orange-500/30">V38 OPTIMIZED</span>
                     </h1>
                 </div>
             </div>
@@ -158,7 +155,7 @@
                     
                     <button id="btnStudioMode" class="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-400 hover:to-red-400 text-white font-black py-4 px-4 rounded-xl transition flex flex-col justify-center items-center text-sm shadow-[0_0_20px_rgba(249,115,22,0.4)]">
                         📺 Přejít do STUDIO MÓDU
-                        <span class="text-[10px] text-white/80 mt-1 font-normal uppercase tracking-wider">Aktivuje tiché plnohodnotné nahrávání</span>
+                        <span class="text-[10px] text-white/80 mt-1 font-normal uppercase tracking-wider">Aktivuje plynulé nahrávání na pozadí</span>
                     </button>
                 </div>
             </div>
@@ -194,7 +191,7 @@
                 </div>
                 
                 <div id="recordCountdownOverlay" class="absolute inset-0 bg-black/80 z-[9999999] flex flex-col items-center justify-center transition-opacity duration-300" style="display:none; opacity:0;">
-                    <p class="text-emerald-500 font-bold tracking-widest uppercase mb-4">Generování videa (Bez potvrzování)</p>
+                    <p class="text-emerald-500 font-bold tracking-widest uppercase mb-4">Generování videa (Optimalizováno pro výkon)</p>
                     <div id="countdownNumber" class="text-9xl font-black text-white drop-shadow-[0_0_30px_rgba(16,185,129,0.8)]">3</div>
                 </div>
 
@@ -223,7 +220,7 @@
         <p class="text-xs text-slate-500 uppercase tracking-widest font-semibold">
             Vytvořil <span class="text-orange-500 font-black">Wondraz</span> © 2026
         </p>
-        <span class="bg-slate-800 text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded border border-emerald-500/30">PURE CANVAS COMPOSITOR</span>
+        <span class="bg-slate-800 text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded border border-emerald-500/30">SMOOTH CANVAS COMPOSITOR</span>
     </footer>
 
     <input type="file" id="fileInput" accept=".gpx" style="display:none;" />
@@ -250,12 +247,12 @@
         let smoothLat = null; let smoothLon = null; let smoothBearing = null; let smoothPitch = 65;
         
         let mediaRecorder = null; let recordedChunks = []; let isRecording = false;
-        let compRafId = null;
+        let compIntervalId = null;
 
         function initMap() {
             map = new maplibregl.Map({
                 container: 'map',
-                preserveDrawingBuffer: true, // EXTRÉMNĚ DŮLEŽITÉ: Povoluje zachytávání WebGL vrstvy do videa bez zčernání
+                preserveDrawingBuffer: true, // EXTRÉMNĚ DŮLEŽITÉ: Povoluje zachytávání WebGL vrstvy
                 style: {
                     version: 8,
                     glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
@@ -427,7 +424,7 @@
             currentExactLat = pt.lat + (nextPt.lat - pt.lat) * fraction;
             currentExactLon = pt.lon + (nextPt.lon - pt.lon) * fraction;
             
-            // Uložení do globálních proměnných pro Canvas Composer nahrávání
+            // Uložení pro Canvas Composer
             currentExactDist = pt.dist + (nextPt.dist - pt.dist) * fraction;
             currentExactEleGain = pt.eleGain + (nextPt.eleGain - pt.eleGain) * fraction;
             currentExactEle = pt.ele + (nextPt.ele - pt.ele) * fraction;
@@ -523,8 +520,7 @@
         });
 
         // -------------------------------------------------------------
-        // Cesta 1: PURE CANVAS SILENT RECORDER
-        // Žádné otravné sdílení obrazovky. Kreslí mapu i texty tiše na pozadí.
+        // OPTIMALIZOVANÝ CANVAS COMPOSITOR (V38)
         // -------------------------------------------------------------
         async function startStudioRecording() {
             if (isRecording) { stopStudioRecording(); return; }
@@ -537,7 +533,6 @@
                 document.getElementById('studio-controls').style.opacity = '0';
                 document.getElementById('studio-controls').style.pointerEvents = 'none';
                 
-                // SKRYTÍ HTML HUDU VE STUDIU ABY NERUŠIL
                 document.getElementById('hud-title').style.display = 'none';
                 document.getElementById('hud-profile-container').style.opacity = '0';
                 document.getElementById('hud-stats').style.display = 'none';
@@ -556,13 +551,19 @@
                 
                 isRecording = true;
                 
+                // Pomocná funkce pro rychlé texty s obrysem (místo pomalého shadowBlur)
+                function drawTextWithOutline(text, x, y) {
+                    ctx.strokeText(text, x, y);
+                    ctx.fillText(text, x, y);
+                }
+                
                 function drawCanvasFrame() {
                     if (!isRecording) return;
                     
                     ctx.fillStyle = '#000';
                     ctx.fillRect(0, 0, finalW, finalH);
 
-                    // 1. Zkopírování 3D mapy z MapLibre
+                    // 1. Zkopírování mapy
                     const mw = mapCanvas.width;
                     const mh = mapCanvas.height;
                     if (mw > 0 && mh > 0) {
@@ -574,7 +575,7 @@
                         ctx.drawImage(mapCanvas, drawX, drawY, drawW, drawH);
                     }
 
-                    // 2. Vykreslení Výškového profilu
+                    // 2. Graf
                     if (document.getElementById('showProfile').checked && gpxtrackData.length > 0) {
                         const pW = profCanvas.width;
                         const pH = profCanvas.height;
@@ -584,34 +585,32 @@
                         ctx.drawImage(profCanvas, (finalW - targetW)/2, finalH - drawH - (isIG ? 200 : 150), targetW, drawH);
                     }
 
-                    // 3. Vykreslení Textů (Název trasy, Vzdálenost, Výška)
-                    ctx.save();
-                    ctx.shadowColor = 'rgba(0,0,0,0.9)';
-                    ctx.shadowBlur = 15;
-                    ctx.shadowOffsetY = 5;
+                    // 3. Texty s obrysy (Rychlejší rendering)
+                    ctx.lineJoin = "round";
+                    ctx.lineWidth = 6;
+                    ctx.strokeStyle = "rgba(0, 0, 0, 0.85)";
                     
                     const routeName = document.getElementById('customRouteName').value.trim().toUpperCase();
                     if (routeName) {
-                        ctx.fillStyle = 'white';
                         ctx.font = "900 " + (isIG ? "55px" : "75px") + " sans-serif";
                         ctx.textAlign = isIG ? "center" : "left";
                         const tX = isIG ? finalW/2 : 60;
                         const tY = isIG ? 120 : 80;
-                        ctx.fillText(routeName, tX, tY);
                         
-                        ctx.fillStyle = '#f97316'; // Orange-500
-                        ctx.shadowBlur = 0;
+                        ctx.fillStyle = 'white';
+                        drawTextWithOutline(routeName, tX, tY);
+                        
+                        ctx.fillStyle = '#f97316';
                         const lineW = isIG ? 100 : 150;
                         if (isIG) ctx.fillRect(tX - lineW/2, tY + 25, lineW, 8);
                         else ctx.fillRect(tX, tY + 25, lineW, 8);
                     }
 
                     if (document.getElementById('showEleGain').checked && gpxtrackData.length > 0) {
-                        ctx.fillStyle = '#fb923c';
                         ctx.font = "bold " + (isIG ? "26px" : "30px") + " sans-serif";
-                        ctx.shadowBlur = 8;
                         ctx.textAlign = isIG ? "center" : "left";
-                        ctx.fillText("NASTOUPÁNO: " + Math.round(currentExactEleGain) + " M", isIG ? finalW/2 : 60, isIG ? 190 : 150);
+                        ctx.fillStyle = '#fb923c';
+                        drawTextWithOutline("NASTOUPÁNO: " + Math.round(currentExactEleGain) + " M", isIG ? finalW/2 : 60, isIG ? 190 : 150);
                     }
                     
                     if (gpxtrackData.length > 0) {
@@ -619,42 +618,62 @@
                         const sY = finalH - 70;
                         
                         if (isIG) {
-                            ctx.fillStyle = '#fb923c'; ctx.font = "bold 24px sans-serif"; ctx.fillText("UJETO", finalW/2 - 180, sY - 60);
-                            ctx.fillStyle = 'white'; ctx.font = "900 70px sans-serif";
-                            const dText = currentExactDist.toFixed(1); ctx.fillText(dText, finalW/2 - 180, sY);
-                            const dW = ctx.measureText(dText).width;
-                            ctx.fillStyle = '#cbd5e1'; ctx.font = "bold 35px sans-serif"; ctx.fillText("km", finalW/2 - 180 + dW/2 + 30, sY);
+                            ctx.font = "bold 24px sans-serif"; ctx.fillStyle = '#fb923c'; 
+                            drawTextWithOutline("UJETO", finalW/2 - 180, sY - 60);
                             
-                            ctx.fillStyle = '#fb923c'; ctx.font = "bold 24px sans-serif"; ctx.fillText("VÝŠKA", finalW/2 + 180, sY - 60);
-                            ctx.fillStyle = 'white'; ctx.font = "900 70px sans-serif";
-                            const eText = Math.round(currentExactEle).toString(); ctx.fillText(eText, finalW/2 + 180, sY);
+                            ctx.font = "900 70px sans-serif"; ctx.fillStyle = 'white';
+                            const dText = currentExactDist.toFixed(1); 
+                            drawTextWithOutline(dText, finalW/2 - 180, sY);
+                            
+                            const dW = ctx.measureText(dText).width;
+                            ctx.font = "bold 35px sans-serif"; ctx.fillStyle = '#cbd5e1'; 
+                            drawTextWithOutline("km", finalW/2 - 180 + dW/2 + 30, sY);
+                            
+                            ctx.font = "bold 24px sans-serif"; ctx.fillStyle = '#fb923c'; 
+                            drawTextWithOutline("VÝŠKA", finalW/2 + 180, sY - 60);
+                            
+                            ctx.font = "900 70px sans-serif"; ctx.fillStyle = 'white';
+                            const eText = Math.round(currentExactEle).toString(); 
+                            drawTextWithOutline(eText, finalW/2 + 180, sY);
+                            
                             const eW = ctx.measureText(eText).width;
-                            ctx.fillStyle = '#cbd5e1'; ctx.font = "bold 35px sans-serif"; ctx.fillText("m", finalW/2 + 180 + eW/2 + 25, sY);
+                            ctx.font = "bold 35px sans-serif"; ctx.fillStyle = '#cbd5e1'; 
+                            drawTextWithOutline("m", finalW/2 + 180 + eW/2 + 25, sY);
                         } else {
-                            ctx.fillStyle = '#fb923c'; ctx.font = "bold 24px sans-serif"; ctx.fillText("UJETA VZDÁLENOST", 60, sY - 60);
-                            ctx.fillStyle = 'white'; ctx.font = "900 70px sans-serif";
-                            const dText = currentExactDist.toFixed(1); ctx.fillText(dText, 60, sY);
-                            const dW = ctx.measureText(dText).width;
-                            ctx.fillStyle = '#cbd5e1'; ctx.font = "bold 35px sans-serif"; ctx.fillText("km", 60 + dW + 10, sY);
+                            ctx.font = "bold 24px sans-serif"; ctx.fillStyle = '#fb923c'; 
+                            drawTextWithOutline("UJETA VZDÁLENOST", 60, sY - 60);
                             
-                            ctx.fillStyle = '#fb923c'; ctx.font = "bold 24px sans-serif"; ctx.fillText("NADM. VÝŠKA", 450, sY - 60);
-                            ctx.fillStyle = 'white'; ctx.font = "900 70px sans-serif";
-                            const eText = Math.round(currentExactEle).toString(); ctx.fillText(eText, 450, sY);
+                            ctx.font = "900 70px sans-serif"; ctx.fillStyle = 'white';
+                            const dText = currentExactDist.toFixed(1); 
+                            drawTextWithOutline(dText, 60, sY);
+                            
+                            const dW = ctx.measureText(dText).width;
+                            ctx.font = "bold 35px sans-serif"; ctx.fillStyle = '#cbd5e1'; 
+                            drawTextWithOutline("km", 60 + dW + 10, sY);
+                            
+                            ctx.font = "bold 24px sans-serif"; ctx.fillStyle = '#fb923c'; 
+                            drawTextWithOutline("NADM. VÝŠKA", 450, sY - 60);
+                            
+                            ctx.font = "900 70px sans-serif"; ctx.fillStyle = 'white';
+                            const eText = Math.round(currentExactEle).toString(); 
+                            drawTextWithOutline(eText, 450, sY);
+                            
                             const eW = ctx.measureText(eText).width;
-                            ctx.fillStyle = '#cbd5e1'; ctx.font = "bold 35px sans-serif"; ctx.fillText("m", 450 + eW + 10, sY);
+                            ctx.font = "bold 35px sans-serif"; ctx.fillStyle = '#cbd5e1'; 
+                            drawTextWithOutline("m", 450 + eW + 10, sY);
                         }
                     }
-                    ctx.restore();
-                    
-                    compRafId = requestAnimationFrame(drawCanvasFrame);
                 }
                 
-                drawCanvasFrame();
+                // Místo requestAnimationFrame pro kreslení používáme striktní interval 30 FPS.
+                compIntervalId = setInterval(drawCanvasFrame, 1000 / 30);
 
-                const canvasStream = compCanvas.captureStream(60);
+                // Nahráváme s plynulými 30 FPS místo 60 FPS
+                const canvasStream = compCanvas.captureStream(30);
                 recordedChunks = [];
 
-                mediaRecorder = new MediaRecorder(canvasStream, { mimeType: videoMimeType, videoBitsPerSecond: 16000000 });
+                // Snížen bitrate na optimalizovaných 8Mbps
+                mediaRecorder = new MediaRecorder(canvasStream, { mimeType: videoMimeType, videoBitsPerSecond: 8000000 });
                 mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); };
                 
                 mediaRecorder.onstop = () => {
@@ -667,7 +686,6 @@
                     btnText.innerText = "Nahrát tiché video";
                     recordDot.classList.remove('pulse-recording');
                     
-                    // NAVRÁCENÍ HTML HUDU
                     document.getElementById('hud-title').style.display = 'block';
                     document.getElementById('hud-profile-container').style.opacity = '1';
                     document.getElementById('hud-stats').style.display = 'flex';
@@ -686,7 +704,7 @@
                     setTimeout(() => { document.body.removeChild(a); window.URL.revokeObjectURL(url); }, 100);
                     
                     canvasStream.getTracks().forEach(track => track.stop());
-                    if (compRafId) cancelAnimationFrame(compRafId);
+                    if (compIntervalId) clearInterval(compIntervalId);
                 };
 
                 mediaRecorder.start();
@@ -712,7 +730,7 @@
                 }, 1000);
 
             } catch(e) {
-                console.log("Nahrávání zrušeno nebo bezpečnostní chyba Canvasu", e);
+                console.log("Nahrávání zrušeno", e);
                 document.getElementById('studio-controls').style.opacity = '1';
                 document.getElementById('studio-controls').style.pointerEvents = 'auto';
             }
@@ -720,7 +738,7 @@
 
         function stopStudioRecording() {
             if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
-            if (compRafId) cancelAnimationFrame(compRafId);
+            if (compIntervalId) clearInterval(compIntervalId);
         }
 
         function safeParseGPX(xmlText, fileName) {
