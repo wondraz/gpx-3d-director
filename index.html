@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GPX 3D Trail Director V33 - Auto-Cropped Recording</title>
+    <title>GPX 3D Trail Director V34 - POI Fix & Smart Crop</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/maplibre-gl@4.3.2/dist/maplibre-gl.js"></script>
@@ -16,14 +16,8 @@
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7); transition: all 0.3s ease;
         }
         
-        /* ŽIVÝ PREVIEW INSTAGRAM MÓDU V EDITORU */
-        body.format-ig #map-wrapper {
-            aspect-ratio: 9 / 16 !important;
-            max-width: 400px;
-            margin: 0 auto;
-        }
+        body.format-ig #map-wrapper { aspect-ratio: 9 / 16 !important; max-width: 400px; margin: 0 auto; }
         
-        /* ZMENŠENÍ A VYCENTROVÁNÍ HUD PRO INSTAGRAM (9:16) */
         body.format-ig #hud-stats { padding-left: 1rem !important; padding-right: 1rem !important; bottom: 1.5rem !important; justify-content: center !important; }
         body.format-ig #hud-stats .flex.gap-8 { gap: 1rem !important; padding: 0.75rem 1.25rem !important; border-radius: 1.25rem !important; width: 100%; justify-content: center; }
         body.format-ig .border-l.pl-8 { padding-left: 1rem !important; }
@@ -38,31 +32,16 @@
         
         body.format-ig #hud-profile-container { bottom: 120px !important; left: 1rem !important; right: 1rem !important; height: 50px !important; }
         
-        /* OVLÁDACÍ MENU DO SLOUPKU PRO IG MÓD */
-        body.format-ig #studio-controls {
-            flex-direction: column !important; top: 50% !important; bottom: auto !important;
-            transform: translate(-50%, -50%) !important; width: 260px !important; padding: 1.5rem !important;
-        }
+        body.format-ig #studio-controls { flex-direction: column !important; top: 50% !important; bottom: auto !important; transform: translate(-50%, -50%) !important; width: 260px !important; padding: 1.5rem !important; }
         body.format-ig #studio-controls button { width: 100% !important; justify-content: center !important; padding-top: 0.875rem !important; padding-bottom: 0.875rem !important; }
         body.format-ig #studio-controls .w-px { display: none !important; }
         body.format-ig #studio-controls .absolute.-top-6 { position: relative !important; top: 0 !important; left: 0 !important; margin-bottom: 0.5rem !important; text-align: center !important; width: 100% !important; white-space: normal !important; }
 
-        /* STUDIO MÓD - SKRYTÍ VŠEHO OKOLO */
         body.studio-mode-active header, body.studio-mode-active footer, body.studio-mode-active .lg\:col-span-1, body.studio-mode-active .ad-space { display: none !important; }
         
-        /* ŠIROKOÚHLÉ STUDIO */
-        body.studio-mode-active #map-wrapper {
-            position: fixed !important; top: 0 !important; left: 0 !important; 
-            width: 100vw !important; height: 100vh !important;
-            z-index: 99990 !important; border-radius: 0 !important; max-width: none !important; margin: 0 !important;
-        }
+        body.studio-mode-active #map-wrapper { position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; z-index: 99990 !important; border-radius: 0 !important; max-width: none !important; margin: 0 !important; }
         
-        /* INSTAGRAM REEL STUDIO */
-        body.studio-mode-active.format-ig #map-wrapper {
-            position: fixed !important; top: 0 !important; left: 50% !important; transform: translateX(-50%) !important;
-            height: 100vh !important; width: auto !important; aspect-ratio: 9 / 16 !important;
-            z-index: 99990 !important; border-radius: 0 !important; max-width: none !important; margin: 0 !important; background: #000;
-        }
+        body.studio-mode-active.format-ig #map-wrapper { position: fixed !important; top: 0 !important; left: 50% !important; transform: translateX(-50%) !important; height: 100vh !important; width: auto !important; aspect-ratio: 9 / 16 !important; z-index: 99990 !important; border-radius: 0 !important; max-width: none !important; margin: 0 !important; background: #000; }
 
         #map { position: absolute; top: 0; left: 0; right: 0; bottom: 0; outline: none; }
         .hud-overlay { position: absolute; pointer-events: none; z-index: 10; text-shadow: 0px 3px 12px rgba(0, 0, 0, 0.9); }
@@ -71,7 +50,6 @@
         
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
         .pulse-recording { animation: pulse 1.5s infinite; }
-        
         @keyframes popIn { 0% { transform: scale(0.5); opacity: 0; } 70% { transform: scale(1.2); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
         .anim-pop { animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
     </style>
@@ -88,7 +66,7 @@
                 </div>
                 <div>
                     <h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
-                        GPX 3D Trail Director <span class="bg-orange-500/10 text-orange-400 text-[10px] px-2.5 py-0.5 rounded-full uppercase font-extrabold border border-orange-500/30">V33 PRO</span>
+                        GPX 3D Trail Director <span class="bg-orange-500/10 text-orange-400 text-[10px] px-2.5 py-0.5 rounded-full uppercase font-extrabold border border-orange-500/30">V34 PRO</span>
                     </h1>
                 </div>
             </div>
@@ -153,6 +131,19 @@
                                 <option value="75">75° (Závodní)</option>
                             </select>
                         </div>
+
+                        <div class="flex flex-col gap-1">
+                            <span class="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Vrcholy & Města</span>
+                            <button id="togglePois" class="bg-emerald-600 text-white border border-emerald-500 text-[11px] font-bold py-1.5 rounded-lg shadow-md transition-all">Zobrazeno ON</button>
+                        </div>
+                        
+                        <div class="flex flex-col gap-1">
+                            <span class="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Formát videa</span>
+                            <select id="formatSelector" class="bg-slate-800 border border-slate-700 rounded-lg px-2 py-1.5 text-[11px] font-semibold text-white outline-none w-full cursor-pointer">
+                                <option value="16-9" selected>🎬 16:9 (YouTube)</option>
+                                <option value="9-16">📱 9:16 (IG Reels)</option>
+                            </select>
+                        </div>
                         
                         <div class="col-span-2 flex flex-col gap-2 mt-1 bg-slate-950/50 p-2.5 rounded-xl border border-slate-800">
                             <div class="flex items-center gap-2">
@@ -163,14 +154,6 @@
                                 <input type="checkbox" id="showProfile" class="w-4 h-4 accent-orange-500 rounded cursor-pointer" checked />
                                 <label for="showProfile" class="text-[11px] font-bold text-emerald-400 cursor-pointer select-none">Ukázat výškový graf ve videu</label>
                             </div>
-                        </div>
-
-                        <div class="col-span-2 flex flex-col gap-1 mt-1">
-                            <span class="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Formát videa</span>
-                            <select id="formatSelector" class="bg-slate-800 border border-slate-700 rounded-lg px-2 py-1.5 text-[11px] font-semibold text-white outline-none w-full cursor-pointer">
-                                <option value="16-9" selected>🎬 Na šířku (16:9 - YouTube)</option>
-                                <option value="9-16">📱 Na výšku (9:16 - IG Reels)</option>
-                            </select>
                         </div>
                     </div>
                     
@@ -216,7 +199,7 @@
                 <div id="recordCountdownOverlay" class="absolute inset-0 bg-black/80 z-[9999999] flex flex-col items-center justify-center transition-opacity duration-300" style="display:none; opacity:0;">
                     <p class="text-orange-500 font-bold tracking-widest uppercase mb-4">Připravte se na let</p>
                     <div id="countdownNumber" class="text-9xl font-black text-white drop-shadow-[0_0_30px_rgba(249,115,22,0.8)]">3</div>
-                    <p class="text-slate-400 text-sm mt-8">Vybrali jste pro záznam "Karta v prohlížeči"?</p>
+                    <p class="text-slate-400 text-sm mt-8">Ujistěte se, že jste vybrali "Karta v prohlížeči"</p>
                 </div>
 
                 <div id="studio-controls" class="absolute bottom-8 left-1/2 -translate-x-1/2 bg-slate-900/95 backdrop-blur-md border border-slate-700 p-3 rounded-2xl flex items-center gap-3 z-[999999] shadow-2xl transition-opacity duration-500 w-[90%] sm:w-auto overflow-hidden" style="display:none;">
@@ -228,10 +211,10 @@
                     </button>
                     <div class="w-px h-8 bg-slate-700 mx-1 hidden sm:block"></div>
                     <button id="btnStudioPlay" class="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition whitespace-nowrap">
-                        ▶ Letět (Bez záznamu)
+                        ▶ Letět
                     </button>
                     <button id="btnStudioRecord" class="bg-red-600 hover:bg-red-500 text-white px-6 py-2.5 rounded-xl text-sm font-bold transition flex items-center gap-2 shadow-[0_0_15px_rgba(220,38,38,0.5)] whitespace-nowrap">
-                        <span id="recordDot" class="w-2.5 h-2.5 bg-white rounded-full inline-block"></span> <span id="recordBtnText">REC Ořezané video</span>
+                        <span id="recordDot" class="w-2.5 h-2.5 bg-white rounded-full inline-block"></span> <span id="recordBtnText">REC Čisté Video</span>
                     </button>
                     <div class="w-px h-8 bg-slate-700 mx-1 hidden sm:block"></div>
                     <button id="btnStudioExit" class="text-slate-400 hover:text-white px-3 py-2.5 text-sm font-bold transition whitespace-nowrap">
@@ -257,13 +240,13 @@
         let speedFactor = 16; 
         let animationFrameId = null; 
         let inStudioMode = false;
+        let poisVisible = true;
 
         let smoothLat = null; let smoothLon = null; let smoothBearing = null; 
         let targetPitch = 65; let smoothPitch = 65;
         
         let mediaRecorder = null; let recordedChunks = []; let isRecording = false;
         
-        // Nové globální proměnné pro chytrý Canvas Cropper
         let cropHiddenVideo = null;
         let cropRafId = null;
 
@@ -286,6 +269,40 @@
                 center: [15.732, 50.729], zoom: 12, pitch: targetPitch, bearing: 0
             });
             map.setMaxPitch(85);
+        }
+
+        async function fetchAndDisplayPOIs(minLat, minLon, maxLat, maxLon) {
+            const btn = document.getElementById('togglePois');
+            btn.innerText = "Hledám...";
+            
+            const margin = 0.08; 
+            const query = `[out:json][timeout:15];(node["natural"="peak"](${minLat-margin},${minLon-margin},${maxLat+margin},${maxLon+margin});node["place"~"village|town|city"](${minLat-margin},${minLon-margin},${maxLat+margin},${maxLon+margin}););out body;`;
+
+            try {
+                const res = await fetch("https://overpass-api.de/api/interpreter", { 
+                    method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: "data=" + encodeURIComponent(query) 
+                });
+                if (!res.ok) throw new Error("API Server error");
+                
+                const data = await res.json();
+                const features = data.elements.filter(e => e.tags && e.tags.name).map(e => ({
+                    type: "Feature", geometry: { type: "Point", coordinates: [e.lon, e.lat] },
+                    properties: { name: e.tags.name, type: e.tags.natural === "peak" ? "peak" : "place", ele: e.tags.ele || "" }
+                }));
+
+                if (map.getSource('pois')) map.getSource('pois').setData({type: "FeatureCollection", features});
+                else {
+                    map.addSource('pois', { type: 'geojson', data: {type: "FeatureCollection", features} });
+                    map.addLayer({ id: 'poi-peaks', type: 'symbol', source: 'pois', filter: ['==', 'type', 'peak'], layout: { 'text-field': ['concat', '▲ ', ['get', 'name'], '\n', ['get', 'ele'], ' m'], 'text-size': 13, 'text-anchor': 'bottom', 'text-offset': [0, -1], 'symbol-placement': 'point' }, paint: { 'text-color': '#fbbf24', 'text-halo-color': 'rgba(0,0,0,0.85)', 'text-halo-width': 2 } });
+                    map.addLayer({ id: 'poi-places', type: 'symbol', source: 'pois', filter: ['==', 'type', 'place'], layout: { 'text-field': ['get', 'name'], 'text-size': 15, 'text-anchor': 'center', 'text-offset': [0, 1] }, paint: { 'text-color': '#ffffff', 'text-halo-color': 'rgba(0,0,0,0.85)', 'text-halo-width': 2 } });
+                }
+                btn.innerText = "Zobrazeno ON";
+                btn.className = "bg-emerald-600 text-white border border-emerald-500 text-[11px] font-bold py-1.5 rounded-lg shadow-md transition-all";
+                poisVisible = true;
+            } catch (err) {
+                btn.innerText = "Chyba OSM";
+                btn.className = "bg-slate-800 border border-slate-700 text-slate-500 text-[11px] font-bold py-1.5 rounded-lg transition-all";
+            }
         }
 
         function getBearing(lat1, lon1, lat2, lon2) {
@@ -333,10 +350,7 @@
                     const x1 = (p1.dist / totalTrackDistance) * W; const y1 = H - ((p1.ele - minE) / range) * (H * 0.8) - 10;
                     const x2 = (p2.dist / totalTrackDistance) * W; const y2 = H - ((p2.ele - minE) / range) * (H * 0.8) - 10;
                     
-                    ctx.beginPath();
-                    ctx.moveTo(x1, y1);
-                    ctx.lineTo(x2, y2);
-                    
+                    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
                     ctx.strokeStyle = (p2.ele > p1.ele + 0.5) ? '#ef4444' : '#22c55e';
                     ctx.stroke();
                 }
@@ -387,10 +401,7 @@
             }
 
             isPlaying = true; updatePlayUI();
-            
-            if(!animationFrameId) {
-                animationFrameId = requestAnimationFrame(gameLoop);
-            }
+            if(!animationFrameId) animationFrameId = requestAnimationFrame(gameLoop);
         }
 
         function gameLoop() {
@@ -407,11 +418,7 @@
                 }
             } else currentIdx += (speedFactor * 0.015);
 
-            if (currentIdx >= gpxtrackData.length - 1) { 
-                stopFlyover(); 
-                if(isRecording) stopStudioRecording(); 
-                return; 
-            }
+            if (currentIdx >= gpxtrackData.length - 1) { stopFlyover(); if(isRecording) stopStudioRecording(); return; }
 
             const fraction = currentIdx % 1, pt = gpxtrackData[Math.floor(currentIdx)], nextPt = gpxtrackData[Math.floor(currentIdx) + 1];
             const exactLat = pt.lat + (nextPt.lat - pt.lat) * fraction;
@@ -436,7 +443,6 @@
             smoothLat += (exactLat - smoothLat) * 0.08; smoothLon += (exactLon - smoothLon) * 0.08;
             let diff = bearingTarget - smoothBearing; while (diff < -180) diff += 360; while (diff > 180) diff -= 360;
             smoothBearing += diff * 0.04; 
-            
             smoothPitch += (targetPitch - smoothPitch) * 0.05;
 
             map.jumpTo({ center: [smoothLon, smoothLat], bearing: smoothBearing, pitch: smoothPitch, zoom: targetPitch > 65 ? 15.5 : 14.5 });
@@ -467,7 +473,7 @@
                         document.getElementById('studio-controls').style.pointerEvents = 'none';
                     }
                 } else {
-                    btnStudioPlay.innerText = "▶ Letět (Bez záznamu)";
+                    btnStudioPlay.innerText = "▶ Letět";
                     btnStudioPlay.classList.replace('bg-amber-600', 'bg-emerald-600');
                     if (inStudioMode) {
                         document.getElementById('studio-controls').style.opacity = '1';
@@ -506,14 +512,11 @@
                 let videoMimeType = 'video/webm;codecs=vp9'; let videoExt = 'webm';
                 if (MediaRecorder.isTypeSupported('video/mp4;codecs=avc1')) { videoMimeType = 'video/mp4;codecs=avc1'; videoExt = 'mp4'; } 
 
-                // Získání streamu celé obrazovky/karty
                 const rawStream = await navigator.mediaDevices.getDisplayMedia({ video: { displaySurface: "browser", width: 1920, height: 1080, frameRate: 60 }, audio: false, preferCurrentTab: true });
                 
-                // SKRYTÍ MENU ABY NEPŘEKÁŽELO V OŘEZU
                 document.getElementById('studio-controls').style.opacity = '0';
                 document.getElementById('studio-controls').style.pointerEvents = 'none';
 
-                // --- CANVAS CROPPER LOGIKA ---
                 const isIG = document.body.classList.contains('format-ig');
                 const finalWidth = isIG ? 1080 : 1920;
                 const finalHeight = isIG ? 1920 : 1080;
@@ -529,7 +532,6 @@
                 const recordCtx = recordCanvas.getContext('2d');
                 
                 const wrapper = document.getElementById('map-wrapper');
-
                 isRecording = true;
                 
                 function drawCropFrame() {
@@ -552,13 +554,10 @@
                         recordCtx.fillRect(0, 0, finalWidth, finalHeight);
                         recordCtx.drawImage(cropHiddenVideo, cropX, cropY, cropW, cropH, 0, 0, finalWidth, finalHeight);
                     }
-                    
                     cropRafId = requestAnimationFrame(drawCropFrame);
                 }
-                
                 drawCropFrame();
 
-                // Získáme stream z plátna místo čistého obrazu
                 const canvasStream = recordCanvas.captureStream(60);
                 recordedChunks = [];
 
@@ -572,7 +571,7 @@
                     const btnText = document.getElementById('recordBtnText');
                     const recordDot = document.getElementById('recordDot');
                     btnRec.classList.replace('bg-slate-800', 'bg-red-600');
-                    btnText.innerText = "REC Ořezané video";
+                    btnText.innerText = "REC Čisté Video";
                     recordDot.classList.remove('pulse-recording');
                     
                     document.getElementById('studio-controls').style.opacity = '1';
@@ -583,12 +582,11 @@
                     const a = document.createElement('a'); a.style.display = 'none'; a.href = url;
                     
                     const userFileName = document.getElementById('customRouteName').value.trim();
-                    a.download = `${userFileName ? userFileName : '3D-Trail-Cropped'}.${videoExt}`;
+                    a.download = `${userFileName ? userFileName : '3D-Trail'}.${videoExt}`;
                     
                     document.body.appendChild(a); a.click();
                     setTimeout(() => { document.body.removeChild(a); window.URL.revokeObjectURL(url); }, 100);
                     
-                    // Úklid po nahrávání
                     rawStream.getTracks().forEach(track => track.stop());
                     canvasStream.getTracks().forEach(track => track.stop());
                     if (cropRafId) cancelAnimationFrame(cropRafId);
@@ -598,28 +596,21 @@
 
                 mediaRecorder.start();
                 
-                // ODPOČET
                 const overlay = document.getElementById('recordCountdownOverlay');
                 const num = document.getElementById('countdownNumber');
-                overlay.style.display = 'flex';
-                overlay.offsetHeight; overlay.style.opacity = '1';
+                overlay.style.display = 'flex'; overlay.offsetHeight; overlay.style.opacity = '1';
 
-                let count = 3;
-                num.innerText = count;
+                let count = 3; num.innerText = count;
                 num.classList.remove('anim-pop'); void num.offsetWidth; num.classList.add('anim-pop');
 
                 const countInt = setInterval(() => {
                     count--;
                     if(count > 0) {
-                        num.innerText = count;
-                        num.classList.remove('anim-pop'); void num.offsetWidth; num.classList.add('anim-pop');
+                        num.innerText = count; num.classList.remove('anim-pop'); void num.offsetWidth; num.classList.add('anim-pop');
                     } else if (count === 0) {
-                        num.innerText = "AKCE!";
-                        num.classList.remove('anim-pop'); void num.offsetWidth; num.classList.add('anim-pop');
-                        num.classList.add('text-green-500');
+                        num.innerText = "AKCE!"; num.classList.remove('anim-pop'); void num.offsetWidth; num.classList.add('anim-pop'); num.classList.add('text-green-500');
                     } else {
-                        clearInterval(countInt);
-                        overlay.style.opacity = '0';
+                        clearInterval(countInt); overlay.style.opacity = '0';
                         setTimeout(() => { overlay.style.display = 'none'; num.classList.remove('text-green-500'); }, 300);
                         if (isRecording) cinematicStart();
                     }
@@ -635,10 +626,7 @@
         function stopStudioRecording() {
             if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
             if (cropRafId) cancelAnimationFrame(cropRafId);
-            if (cropHiddenVideo) {
-                cropHiddenVideo.pause();
-                cropHiddenVideo.srcObject = null;
-            }
+            if (cropHiddenVideo) { cropHiddenVideo.pause(); cropHiddenVideo.srcObject = null; }
         }
 
         function safeParseGPX(xmlText, fileName) {
@@ -679,6 +667,7 @@
                 loadGPXData(pts, dist, cleanName.toUpperCase());
                 
                 document.getElementById('dropzoneText').innerText = `✅ Načteno: ${pts.length} bodů`;
+                fetchAndDisplayPOIs(minLat, minLon, maxLat, maxLon);
 
             } catch(e) { alert("Nepodařilo se přečíst GPX soubor."); }
         }
@@ -767,6 +756,7 @@
                 const margin = 0.08; 
                 map.setMaxBounds([ [minLon - margin, minLat - margin], [maxLon + margin, maxLat + margin] ]);
                 loadGPXData(pts, dist, "VÝŠLAP NA SNĚŽKU 🏔️");
+                fetchAndDisplayPOIs(minLat, minLon, maxLat, maxLon);
             });
 
             document.getElementById('styleSat').addEventListener('click', (e) => {
@@ -779,6 +769,16 @@
                 map.setLayoutProperty('satellite-layer', 'visibility', 'none'); map.setLayoutProperty('topo-layer', 'visibility', 'visible');
                 e.target.className = "flex-1 bg-orange-600 text-white text-[11px] font-bold py-1.5 rounded-md transition-all shadow-md";
                 document.getElementById('styleSat').className = "flex-1 text-slate-400 text-[11px] font-bold py-1.5 rounded-md hover:text-white transition-all";
+            });
+
+            document.getElementById('togglePois').addEventListener('click', (e) => {
+                if(e.target.disabled) return;
+                poisVisible = !poisVisible;
+                const vis = poisVisible ? 'visible' : 'none';
+                if(map.getLayer('poi-peaks')) map.setLayoutProperty('poi-peaks', 'visibility', vis);
+                if(map.getLayer('poi-places')) map.setLayoutProperty('poi-places', 'visibility', vis);
+                e.target.innerText = poisVisible ? "Zobrazeno ON" : "Skryto OFF";
+                e.target.className = poisVisible ? "bg-emerald-600 text-white border border-emerald-500 text-[11px] font-bold py-1.5 rounded-lg shadow-md transition-all" : "bg-slate-700 text-slate-400 text-[11px] font-bold py-1.5 rounded-lg transition-all";
             });
 
             document.getElementById('showProfile').addEventListener('change', drawHUDProfile);
