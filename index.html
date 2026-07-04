@@ -3,13 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GPX 3D Trail Director V46 - Frame-by-Frame Pro Render</title>
+    <title>GPX 3D Trail Director V47 - Real-Time Cache Optimize</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/maplibre-gl@4.3.2/dist/maplibre-gl.js"></script>
     <link href="https://unpkg.com/maplibre-gl@4.3.2/dist/maplibre-gl.css" rel="stylesheet" />
-    
-    <script src="https://unpkg.com/mp4-muxer@3.0.0/build/mp4-muxer.js"></script>
     
     <style>
         #map-wrapper {
@@ -75,7 +73,7 @@
                 </div>
                 <div>
                     <h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
-                        GPX 3D Trail Director <span class="bg-orange-500/10 text-orange-400 text-[10px] px-2.5 py-0.5 rounded-full uppercase font-extrabold border border-orange-500/30">V46 FRAME-BY-FRAME</span>
+                        GPX 3D Trail Director <span class="bg-emerald-500/10 text-emerald-400 text-[10px] px-2.5 py-0.5 rounded-full uppercase font-extrabold border border-emerald-500/30">V47 REAL-TIME CACHE OPTIMIZE</span>
                     </h1>
                 </div>
             </div>
@@ -180,7 +178,7 @@
                     
                     <button id="btnStudioMode" class="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-400 hover:to-red-400 text-white font-black py-4 px-4 rounded-xl transition flex flex-col justify-center items-center text-sm shadow-[0_0_20px_rgba(249,115,22,0.4)]">
                         📺 Přejít do STUDIO MÓDU
-                        <span class="text-[10px] text-white/80 mt-1 font-normal uppercase tracking-wider">Aktivuje PRO renderování bez záseků</span>
+                        <span class="text-[10px] text-white/80 mt-1 font-normal uppercase tracking-wider">Aktivuje tiché nahrávání s kešováním</span>
                     </button>
                 </div>
             </div>
@@ -216,9 +214,8 @@
                 </div>
                 
                 <div id="recordCountdownOverlay" class="absolute inset-0 bg-black/80 z-[9999999] flex flex-col items-center justify-center transition-opacity duration-300" style="display:none; opacity:0;">
-                    <p class="text-emerald-500 font-bold tracking-widest uppercase mb-4 text-center px-4" id="renderStatusTitle">Pro-Render Frame-by-Frame</p>
-                    <div id="countdownNumber" class="text-4xl sm:text-6xl font-black text-white drop-shadow-[0_0_30px_rgba(16,185,129,0.8)] text-center px-4">Příprava scény...</div>
-                    <p class="text-slate-400 text-sm mt-4">Nyní je zaručena 100% plynulost bez záseků.</p>
+                    <p class="text-emerald-500 font-bold tracking-widest uppercase mb-4 text-center px-4" id="renderStatusTitle">Automatické nahrávání</p>
+                    <div id="countdownNumber" class="text-9xl font-black text-white drop-shadow-[0_0_30px_rgba(16,185,129,0.8)] text-center px-4">3</div>
                 </div>
 
                 <div id="studio-controls" class="absolute bottom-8 left-1/2 -translate-x-1/2 bg-slate-900/95 backdrop-blur-md border border-slate-700 p-3 rounded-2xl flex items-center gap-3 z-[999999] shadow-2xl transition-opacity duration-500 w-[90%] sm:w-auto overflow-hidden" style="display:none;">
@@ -233,7 +230,7 @@
                         ▶ Otestovat let
                     </button>
                     <button id="btnStudioRecord" class="bg-red-600 hover:bg-red-500 text-white px-6 py-2.5 rounded-xl text-sm font-bold transition flex items-center gap-2 shadow-[0_0_15px_rgba(220,38,38,0.5)] whitespace-nowrap">
-                        <span id="recordDot" class="w-2.5 h-2.5 bg-white rounded-full inline-block"></span> <span id="recordBtnText">Spustit PRO Render</span>
+                        <span id="recordDot" class="w-2.5 h-2.5 bg-white rounded-full inline-block"></span> <span id="recordBtnText">Nahrát tiché video</span>
                     </button>
                     <div class="w-px h-8 bg-slate-700 mx-1 hidden sm:block"></div>
                     <button id="btnStudioExit" class="text-slate-400 hover:text-white px-3 py-2.5 text-sm font-bold transition whitespace-nowrap">
@@ -249,7 +246,7 @@
         <p class="text-xs text-slate-500 uppercase tracking-widest font-semibold">
             Vytvořil <span class="text-orange-500 font-black">Wondraz</span> © 2026
         </p>
-        <span class="bg-slate-800 text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded border border-emerald-500/30">V46: FRAME-BY-FRAME PRO RENDER</span>
+        <span class="bg-slate-800 text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded border border-emerald-500/30">V47: REAL-TIME CACHE OPTIMIZE</span>
     </footer>
 
     <input type="file" id="fileInput" accept=".gpx" style="display:none;" />
@@ -264,6 +261,7 @@
         let currentIdx = 0;
         let currentAnimDist = 0; 
         let speedFactor = 16; 
+        let originalSpeedFactor = 16; // Pro ukládání rychlosti během kešování
         let animationFrameId = null; 
         let inStudioMode = false;
         let poisVisible = true;
@@ -275,9 +273,11 @@
 
         let smoothLat = null; let smoothLon = null; let smoothBearing = null; let smoothPitch = 65;
         
-        let abortRecording = false; 
-        let isRecording = false;
+        let mediaRecorder = null; let recordedChunks = []; let isRecording = false;
         
+        // V47 Cache proměnné
+        let isCaching = false;
+        let renderLoopId = null;
         let compCanvas = null;
         let compCtx = null;
         let compFinalW = 1280;
@@ -321,6 +321,9 @@
         }
 
         function drawHUDProfile() {
+            // Pokud kešujeme terén, nekreslíme HUD abychom šetřili procesor
+            if (isCaching) return;
+
             const container = document.getElementById('hud-profile-container');
             if (!gpxtrackData.length || !document.getElementById('showProfile').checked) { container.style.opacity = '0'; return; }
             container.style.display = 'block'; container.style.opacity = '1';
@@ -447,22 +450,30 @@
 
         async function cinematicStart() {
             if (gpxtrackData.length === 0) { alert("Prosím, nejprve nahraj GPX trasu."); return; }
-            if (currentIdx >= gpxtrackData.length - 1) resetFlyover();
+            
+            if (currentIdx >= gpxtrackData.length - 1) {
+                resetFlyover();
+            }
             
             if(!isPlaying && currentIdx === 0) {
                 smoothLat = gpxtrackData[0].lat; smoothLon = gpxtrackData[0].lon;
                 smoothBearing = gpxtrackData.length > 1 ? getBearing(smoothLat, smoothLon, gpxtrackData[1].lat, gpxtrackData[1].lon) : 0;
-                map.jumpTo({ center: [gpxtrackData[0].lon, gpxtrackData[0].lat], zoom: 12, pitch: 30, bearing: 0 });
-                await new Promise(r => setTimeout(r, 400));
                 
-                if (inStudioMode) {
+                if (!isCaching) {
+                    map.jumpTo({ center: [gpxtrackData[0].lon, gpxtrackData[0].lat], zoom: 12, pitch: 30, bearing: 0 });
+                    await new Promise(r => setTimeout(r, 400));
+                }
+                
+                if (inStudioMode && !isRecording && !isCaching) {
                     document.getElementById('studio-controls').style.opacity = '0';
                     document.getElementById('studio-controls').style.pointerEvents = 'none';
                 }
 
-                let tPitch = parseInt(document.getElementById('cameraPitchSelect').value) || 65;
-                map.flyTo({ center: [gpxtrackData[0].lon, gpxtrackData[0].lat], zoom: 14.5, pitch: tPitch, bearing: smoothBearing, duration: 1800, essential: true });
-                await new Promise(r => setTimeout(r, 1900));
+                let targetPitchStr = document.getElementById('cameraPitchSelect').value;
+                let tPitch = parseInt(targetPitchStr) || 65;
+
+                map.flyTo({ center: [gpxtrackData[0].lon, gpxtrackData[0].lat], zoom: 14.5, pitch: tPitch, bearing: smoothBearing, duration: isCaching ? 500 : 1800, essential: true });
+                await new Promise(r => setTimeout(r, isCaching ? 600 : 1900));
             }
 
             isPlaying = true; updatePlayUI();
@@ -485,9 +496,21 @@
 
             if (currentIdx >= gpxtrackData.length - 1) { 
                 currentIdx = gpxtrackData.length - 1; 
+                
+                // V47 Logika po doletu na konec
+                if (isCaching) {
+                    stopFlyover();
+                    speedFactor = originalSpeedFactor; // Vrácení rychlosti
+                    startActualRecordingPhase(); // Spuštění ostrého nahrávání
+                    return;
+                }
+
                 if (!isFinishingRec) {
                     isFinishingRec = true;
-                    setTimeout(() => { stopFlyover(); }, 2000);
+                    setTimeout(() => {
+                        stopFlyover(); 
+                        if(isRecording) stopStudioRecording(); 
+                    }, 2000);
                 }
             }
 
@@ -498,13 +521,16 @@
             const pt = gpxtrackData[idx], nextPt = gpxtrackData[nextIdx];
             currentExactLat = pt.lat + (nextPt.lat - pt.lat) * fraction;
             currentExactLon = pt.lon + (nextPt.lon - pt.lon) * fraction;
+            
             currentExactDist = pt.dist + (nextPt.dist - pt.dist) * fraction;
             currentExactEleGain = pt.eleGain + (nextPt.eleGain - pt.eleGain) * fraction;
             currentExactEle = pt.ele + (nextPt.ele - pt.ele) * fraction;
 
-            document.getElementById('hudDist').innerHTML = currentExactDist.toFixed(1) + '<span class="text-2xl text-slate-300 ml-1">km</span>';
-            document.getElementById('hudEle').innerHTML = Math.round(currentExactEle) + '<span class="text-2xl text-slate-300 ml-1">m</span>';
-            document.getElementById('eleGainVal').innerText = Math.round(currentExactEleGain) + " m";
+            if (!isCaching) {
+                document.getElementById('hudDist').innerHTML = currentExactDist.toFixed(1) + '<span class="text-2xl text-slate-300 ml-1">km</span>';
+                document.getElementById('hudEle').innerHTML = Math.round(currentExactEle) + '<span class="text-2xl text-slate-300 ml-1">m</span>';
+                document.getElementById('eleGainVal').innerText = Math.round(currentExactEleGain) + " m";
+            }
 
             drawHUDProfile();
 
@@ -515,7 +541,8 @@
             let lookAheadIdx = Math.min(idx + speedFactor * 3, gpxtrackData.length - 1);
             let targetBearing = getBearing(currentExactLat, currentExactLon, gpxtrackData[lookAheadIdx].lat, gpxtrackData[lookAheadIdx].lon);
 
-            let tPitch = parseInt(document.getElementById('cameraPitchSelect').value) || 65;
+            let targetPitchStr = document.getElementById('cameraPitchSelect').value;
+            let tPitch = parseInt(targetPitchStr) || 65;
 
             smoothLat += (currentExactLat - smoothLat) * 0.08; smoothLon += (currentExactLon - smoothLon) * 0.08;
             let diff = targetBearing - smoothBearing; while (diff < -180) diff += 360; while (diff > 180) diff -= 360;
@@ -542,7 +569,7 @@
 
             const btnStudioPlay = document.getElementById('btnStudioPlay');
             if(btnStudioPlay) {
-                if(isPlaying) {
+                if(isPlaying && !isCaching) {
                     btnStudioPlay.innerText = "⏸ Pauza";
                     btnStudioPlay.classList.replace('bg-blue-600', 'bg-amber-600');
                     if (inStudioMode && !isRecording) {
@@ -552,7 +579,7 @@
                 } else {
                     btnStudioPlay.innerText = "▶ Otestovat let";
                     btnStudioPlay.classList.replace('bg-amber-600', 'bg-blue-600');
-                    if (inStudioMode && !isRecording) {
+                    if (inStudioMode && !isCaching && !isRecording) {
                         document.getElementById('studio-controls').style.opacity = '1';
                         document.getElementById('studio-controls').style.pointerEvents = 'auto';
                     }
@@ -564,6 +591,7 @@
             if (gpxtrackData.length === 0) { alert("Prosím, nejprve nahraj GPX trasu."); return; }
             inStudioMode = true;
             document.body.classList.add('studio-mode-active');
+            
             setTimeout(() => { map.resize(); }, 100);
             
             const controls = document.getElementById('studio-controls');
@@ -574,7 +602,7 @@
         function exitStudioMode() {
             inStudioMode = false;
             stopFlyover();
-            if(isRecording) abortRecording = true;
+            if(isRecording) stopStudioRecording();
             if (document.fullscreenElement) document.exitFullscreen();
 
             document.body.classList.remove('studio-mode-active');
@@ -583,59 +611,48 @@
         }
 
         window.addEventListener('keydown', (e) => {
-            if (e.code === 'Space' && !isRecording) {
+            if (e.code === 'Space') {
                 if(e.target === document.body || inStudioMode) e.preventDefault();
-                if (gpxtrackData.length > 0) {
+                if (gpxtrackData.length > 0 && !isRecording && !isCaching) {
                     if (isPlaying) stopFlyover(); else cinematicStart();
                 }
             }
-            if (e.code === 'Escape' && inStudioMode) exitStudioMode();
+            if (e.code === 'Escape' && inStudioMode) {
+                exitStudioMode();
+            }
         });
-
-        // -------------------------------------------------------------
-        // Pomocník pro garanci načtení mapy (Klíčové pro Frame-by-Frame)
-        // -------------------------------------------------------------
-        function waitForMapIdle(mapObj) {
-            return new Promise(resolve => {
-                if (mapObj.isStyleLoaded() && mapObj.areTilesLoaded()) {
-                    resolve(); return;
-                }
-                const timer = setTimeout(() => {
-                    mapObj.off('idle', onIdle);
-                    resolve(); // Fallback záchrana, aby to nezamrzlo na špatné dlaždici
-                }, 800);
-
-                function onIdle() {
-                    clearTimeout(timer);
-                    resolve();
-                }
-                mapObj.once('idle', onIdle);
-            });
-        }
 
         function drawTextWithOutline(text, x, y) {
             compCtx.strokeText(text, x, y);
             compCtx.fillText(text, x, y);
         }
 
-        function drawCanvasFrame() {
+        function renderCanvasFrame() {
+            if (!isRecording) return;
+            
             compCtx.fillStyle = '#000';
             compCtx.fillRect(0, 0, compFinalW, compFinalH);
 
             const mapCanvas = map.getCanvas();
             const mw = mapCanvas.width;
             const mh = mapCanvas.height;
-            if (mw > 0 && mh > 0) compCtx.drawImage(mapCanvas, 0, 0, mw, mh, 0, 0, compFinalW, compFinalH);
+            if (mw > 0 && mh > 0) {
+                compCtx.drawImage(mapCanvas, 0, 0, mw, mh, 0, 0, compFinalW, compFinalH);
+            }
 
             const profCanvas = document.getElementById('profileCanvas');
             if (document.getElementById('showProfile').checked && gpxtrackData.length > 0) {
+                const pW = profCanvas.width;
+                const pH = profCanvas.height;
                 const targetW = compFinalW - 80;
-                const scaleP = targetW / profCanvas.width;
-                const drawH = profCanvas.height * scaleP;
+                const scaleP = targetW / pW;
+                const drawH = pH * scaleP;
                 compCtx.drawImage(profCanvas, (compFinalW - targetW)/2, compFinalH - drawH - (compIsIG ? 140 : 100), targetW, drawH);
             }
 
-            compCtx.lineJoin = "round"; compCtx.lineWidth = 4; compCtx.strokeStyle = "rgba(0, 0, 0, 0.85)";
+            compCtx.lineJoin = "round";
+            compCtx.lineWidth = 4;
+            compCtx.strokeStyle = "rgba(0, 0, 0, 0.85)";
             
             const routeName = document.getElementById('customRouteName').value.trim().toUpperCase();
             if (routeName) {
@@ -644,7 +661,9 @@
                 const tX = compIsIG ? compFinalW/2 : 40;
                 const tY = compIsIG ? 80 : 60;
                 
-                compCtx.fillStyle = 'white'; drawTextWithOutline(routeName, tX, tY);
+                compCtx.fillStyle = 'white';
+                drawTextWithOutline(routeName, tX, tY);
+                
                 compCtx.fillStyle = '#f97316';
                 const lineW = compIsIG ? 70 : 100;
                 if (compIsIG) compCtx.fillRect(tX - lineW/2, tY + 15, lineW, 6);
@@ -653,7 +672,8 @@
 
             if (document.getElementById('showEleGain').checked && gpxtrackData.length > 0) {
                 compCtx.font = "bold " + (compIsIG ? "18px" : "20px") + " sans-serif";
-                compCtx.textAlign = compIsIG ? "center" : "left"; compCtx.fillStyle = '#fb923c';
+                compCtx.textAlign = compIsIG ? "center" : "left";
+                compCtx.fillStyle = '#fb923c';
                 drawTextWithOutline("NASTOUPÁNO: " + Math.round(currentExactEleGain) + " M", compIsIG ? compFinalW/2 : 40, compIsIG ? 130 : 100);
             }
             
@@ -662,44 +682,63 @@
                 const sY = compFinalH - 40;
                 
                 if (compIsIG) {
-                    compCtx.font = "bold 16px sans-serif"; compCtx.fillStyle = '#fb923c'; drawTextWithOutline("UJETO", compFinalW/2 - 120, sY - 40);
-                    compCtx.font = "900 50px sans-serif"; compCtx.fillStyle = 'white';
-                    const dText = currentExactDist.toFixed(1); drawTextWithOutline(dText, compFinalW/2 - 120, sY);
-                    const dW = compCtx.measureText(dText).width;
-                    compCtx.font = "bold 24px sans-serif"; compCtx.fillStyle = '#cbd5e1'; drawTextWithOutline("km", compFinalW/2 - 120 + dW/2 + 20, sY);
+                    compCtx.font = "bold 16px sans-serif"; compCtx.fillStyle = '#fb923c'; 
+                    drawTextWithOutline("UJETO", compFinalW/2 - 120, sY - 40);
                     
-                    compCtx.font = "bold 16px sans-serif"; compCtx.fillStyle = '#fb923c'; drawTextWithOutline("VÝŠKA", compFinalW/2 + 120, sY - 40);
                     compCtx.font = "900 50px sans-serif"; compCtx.fillStyle = 'white';
-                    const eText = Math.round(currentExactEle).toString(); drawTextWithOutline(eText, compFinalW/2 + 120, sY);
+                    const dText = currentExactDist.toFixed(1); 
+                    drawTextWithOutline(dText, compFinalW/2 - 120, sY);
+                    
+                    const dW = compCtx.measureText(dText).width;
+                    compCtx.font = "bold 24px sans-serif"; compCtx.fillStyle = '#cbd5e1'; 
+                    drawTextWithOutline("km", compFinalW/2 - 120 + dW/2 + 20, sY);
+                    
+                    compCtx.font = "bold 16px sans-serif"; compCtx.fillStyle = '#fb923c'; 
+                    drawTextWithOutline("VÝŠKA", compFinalW/2 + 120, sY - 40);
+                    
+                    compCtx.font = "900 50px sans-serif"; compCtx.fillStyle = 'white';
+                    const eText = Math.round(currentExactEle).toString(); 
+                    drawTextWithOutline(eText, compFinalW/2 + 120, sY);
+                    
                     const eW = compCtx.measureText(eText).width;
-                    compCtx.font = "bold 24px sans-serif"; compCtx.fillStyle = '#cbd5e1'; drawTextWithOutline("m", compFinalW/2 + 120 + eW/2 + 15, sY);
+                    compCtx.font = "bold 24px sans-serif"; compCtx.fillStyle = '#cbd5e1'; 
+                    drawTextWithOutline("m", compFinalW/2 + 120 + eW/2 + 15, sY);
                 } else {
-                    compCtx.font = "bold 16px sans-serif"; compCtx.fillStyle = '#fb923c'; drawTextWithOutline("VZDÁLENOST", 40, sY - 40);
-                    compCtx.font = "900 50px sans-serif"; compCtx.fillStyle = 'white';
-                    const dText = currentExactDist.toFixed(1); drawTextWithOutline(dText, 40, sY);
-                    const dW = compCtx.measureText(dText).width;
-                    compCtx.font = "bold 24px sans-serif"; compCtx.fillStyle = '#cbd5e1'; drawTextWithOutline("km", 40 + dW + 8, sY);
+                    compCtx.font = "bold 16px sans-serif"; compCtx.fillStyle = '#fb923c'; 
+                    drawTextWithOutline("VZDÁLENOST", 40, sY - 40);
                     
-                    compCtx.font = "bold 16px sans-serif"; compCtx.fillStyle = '#fb923c'; drawTextWithOutline("NADM. VÝŠKA", 300, sY - 40);
                     compCtx.font = "900 50px sans-serif"; compCtx.fillStyle = 'white';
-                    const eText = Math.round(currentExactEle).toString(); drawTextWithOutline(eText, 300, sY);
+                    const dText = currentExactDist.toFixed(1); 
+                    drawTextWithOutline(dText, 40, sY);
+                    
+                    const dW = compCtx.measureText(dText).width;
+                    compCtx.font = "bold 24px sans-serif"; compCtx.fillStyle = '#cbd5e1'; 
+                    drawTextWithOutline("km", 40 + dW + 8, sY);
+                    
+                    compCtx.font = "bold 16px sans-serif"; compCtx.fillStyle = '#fb923c'; 
+                    drawTextWithOutline("NADM. VÝŠKA", 300, sY - 40);
+                    
+                    compCtx.font = "900 50px sans-serif"; compCtx.fillStyle = 'white';
+                    const eText = Math.round(currentExactEle).toString(); 
+                    drawTextWithOutline(eText, 300, sY);
+                    
                     const eW = compCtx.measureText(eText).width;
-                    compCtx.font = "bold 24px sans-serif"; compCtx.fillStyle = '#cbd5e1'; drawTextWithOutline("m", 300 + eW + 8, sY);
+                    compCtx.font = "bold 24px sans-serif"; compCtx.fillStyle = '#cbd5e1'; 
+                    drawTextWithOutline("m", 300 + eW + 8, sY);
                 }
             }
+            
+            // Loop pomocí requestAnimationFrame
+            renderLoopId = requestAnimationFrame(renderCanvasFrame);
         }
 
         // -------------------------------------------------------------
-        // V46: FRAME-BY-FRAME PRO VIDEO RENDER
+        // V47: Start Nahrávání s Cache Runem
         // -------------------------------------------------------------
         async function startStudioRecording() {
-            if (isRecording) { abortRecording = true; return; }
-            if (typeof Mp4Muxer === 'undefined' || !window.VideoEncoder) {
-                alert("Pro Frame-by-Frame render potřebuješ prohlížeč s podporou WebCodecs (moderní Chrome, Edge, Safari).");
-                return;
-            }
-
-            isRecording = true; abortRecording = false;
+            if (isRecording || isCaching) { stopStudioRecording(); return; }
+            
+            isCaching = true;
             resetFlyover();
 
             document.getElementById('studio-controls').style.opacity = '0';
@@ -708,139 +747,135 @@
             document.getElementById('hud-profile-container').style.opacity = '0';
             document.getElementById('hud-stats').style.display = 'none';
 
-            compIsIG = document.body.classList.contains('format-ig');
-            compFinalW = compIsIG ? 720 : 1280;
-            compFinalH = compIsIG ? 1280 : 720;
-            compCanvas = document.createElement('canvas');
-            compCanvas.width = compFinalW; compCanvas.height = compFinalH;
-            compCtx = compCanvas.getContext('2d');
-
+            // Zobrazit caching overlay
             const overlay = document.getElementById('recordCountdownOverlay');
             const num = document.getElementById('countdownNumber');
-            overlay.style.display = 'flex'; overlay.style.opacity = '1';
-            num.innerText = "Příprava scény...";
-
-            let fps = 30;
-            let kmPerFrame = 0.00045 * speedFactor;
-            let estimatedFrames = Math.ceil(totalTrackDistance / kmPerFrame) + (2 * fps);
-
-            let muxer = new Mp4Muxer.Muxer({
-                target: new Mp4Muxer.ArrayBufferTarget(),
-                video: { codec: 'avc', width: compFinalW, height: compFinalH },
-                fastStart: 'in-memory'
-            });
-
-            let videoEncoder = new VideoEncoder({
-                output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
-                error: e => console.error(e)
-            });
-
-            videoEncoder.configure({
-                codec: 'avc1.640028',
-                width: compFinalW,
-                height: compFinalH,
-                bitrate: 8_000_000,
-                framerate: fps
-            });
-
-            const btnRec = document.getElementById('btnStudioRecord');
-            btnRec.classList.replace('bg-red-600', 'bg-slate-800');
-            document.getElementById('recordBtnText').innerText = "Zrušit Render";
-            document.getElementById('recordDot').classList.add('pulse-recording');
-            document.getElementById('studio-controls').style.opacity = '1';
-            document.getElementById('studio-controls').style.pointerEvents = 'auto';
-
-            let currentFrame = 0; let simDist = 0; currentIdx = 0;
-            smoothLat = gpxtrackData[0].lat; smoothLon = gpxtrackData[0].lon;
-            let tPitch = parseInt(document.getElementById('cameraPitchSelect').value) || 65;
-            smoothPitch = tPitch;
-
-            // Samotná Frame-by-Frame renderovací smyčka
-            while (currentFrame < estimatedFrames && !abortRecording) {
-                num.innerText = `Kreslím snímek ${currentFrame} z ${estimatedFrames}\n(${Math.round((currentFrame/estimatedFrames)*100)}%)`;
-
-                if (simDist < totalTrackDistance) {
-                    simDist += kmPerFrame;
-                    let intId = 0;
-                    while (intId < gpxtrackData.length - 1 && gpxtrackData[intId+1].dist < simDist) intId++;
-                    let denom = gpxtrackData[intId+1].dist - gpxtrackData[intId].dist;
-                    currentIdx = intId + (denom > 0 ? (simDist - gpxtrackData[intId].dist) / denom : 0);
-                }
-                if (currentIdx > gpxtrackData.length - 1) currentIdx = gpxtrackData.length - 1;
-
-                let idx = Math.floor(currentIdx); let nextIdx = Math.min(idx + 1, gpxtrackData.length - 1);
-                let fraction = currentIdx === gpxtrackData.length - 1 ? 1 : currentIdx % 1;
-
-                const pt = gpxtrackData[idx], nextPt = gpxtrackData[nextIdx];
-                currentExactLat = pt.lat + (nextPt.lat - pt.lat) * fraction;
-                currentExactLon = pt.lon + (nextPt.lon - pt.lon) * fraction;
-                currentExactDist = pt.dist + (nextPt.dist - pt.dist) * fraction;
-                currentExactEleGain = pt.eleGain + (nextPt.eleGain - pt.eleGain) * fraction;
-                currentExactEle = pt.ele + (nextPt.ele - pt.ele) * fraction;
-
-                let lookAheadIdx = Math.min(idx + speedFactor * 3, gpxtrackData.length - 1);
-                let targetBearing = getBearing(currentExactLat, currentExactLon, gpxtrackData[lookAheadIdx].lat, gpxtrackData[lookAheadIdx].lon);
-
-                smoothLat += (currentExactLat - smoothLat) * 0.08; smoothLon += (currentExactLon - smoothLon) * 0.08;
-                let diff = targetBearing - smoothBearing; while (diff < -180) diff += 360; while (diff > 180) diff -= 360;
-                smoothBearing += diff * 0.04; smoothPitch += (tPitch - smoothPitch) * 0.05;
-
-                let lineProgress = Math.max(0.0001, Math.min(1, currentExactDist / totalTrackDistance));
-                map.setPaintProperty('route-glow', 'line-gradient', ['step', ['line-progress'], '#ef4444', lineProgress, 'rgba(0,0,0,0)']);
-                map.setPaintProperty('route-line', 'line-gradient', ['step', ['line-progress'], '#f97316', lineProgress, 'rgba(0,0,0,0)']);
-
-                map.jumpTo({ center: [smoothLon, smoothLat], bearing: smoothBearing, pitch: smoothPitch, zoom: tPitch > 65 ? 15.5 : 14.5 });
-                drawHUDProfile(); 
-
-                // Zlaté pravidlo: Počkej na grafiku
-                await waitForMapIdle(map);
-                
-                drawCanvasFrame(); 
-
-                let timestamp = (currentFrame * 1000000) / fps;
-                let frame = new VideoFrame(compCanvas, { timestamp, duration: 1000000 / fps });
-                videoEncoder.encode(frame, { keyFrame: currentFrame % 60 === 0 });
-                frame.close();
-
-                currentFrame++;
-                
-                // Nenecháme zamrznout prohlížeč - dáme mu šanci překreslit UI text
-                await new Promise(r => requestAnimationFrame(r));
-            }
-
-            num.innerText = abortRecording ? "Rušení..." : "Ukládám HD Video...";
-            await videoEncoder.flush();
-            videoEncoder.close();
-            muxer.finalize();
-
-            if (!abortRecording) {
-                let buffer = muxer.target.buffer;
-                let blob = new Blob([buffer], { type: 'video/mp4' });
-                let url = URL.createObjectURL(blob);
-                
-                const a = document.createElement('a'); a.style.display = 'none'; a.href = url;
-                const userFileName = document.getElementById('customRouteName').value.trim();
-                a.download = `${userFileName ? userFileName : '3D-Trail'}-PRO.mp4`;
-                document.body.appendChild(a); a.click();
-                setTimeout(() => { document.body.removeChild(a); window.URL.revokeObjectURL(url); }, 100);
-            }
-
-            isRecording = false;
-            btnRec.classList.replace('bg-slate-800', 'bg-red-600');
-            document.getElementById('recordBtnText').innerText = "Spustit PRO Render";
-            document.getElementById('recordDot').classList.remove('pulse-recording');
+            const title = document.getElementById('renderStatusTitle');
             
-            document.getElementById('hud-title').style.display = 'block';
-            document.getElementById('hud-profile-container').style.opacity = '1';
-            document.getElementById('hud-stats').style.display = 'flex';
+            overlay.style.display = 'flex'; overlay.offsetHeight; overlay.style.opacity = '1';
+            title.innerText = "Příprava kešování (Pre-flight)";
+            num.className = "text-4xl sm:text-6xl font-black text-white drop-shadow-[0_0_30px_rgba(16,185,129,0.8)] px-4 text-center anim-pop";
+            num.innerText = "Stahuji mapu do paměti...";
+
+            // Zvýšit rychlost pro Cache Run
+            originalSpeedFactor = speedFactor;
+            speedFactor = 120; // Turbo
             
-            overlay.style.opacity = '0';
-            setTimeout(() => { overlay.style.display = 'none'; }, 300);
-            resetFlyover();
+            cinematicStart();
         }
 
-        // ... Zbytek standardního kódu (zpracování GPX, atd.) zůstává stejný ...
-        
+        // -------------------------------------------------------------
+        // V47: Fáze 2 - Ostré nahrávání
+        // -------------------------------------------------------------
+        function startActualRecordingPhase() {
+            isCaching = false;
+            resetFlyover();
+
+            try {
+                let videoMimeType = 'video/webm;codecs=vp9'; let videoExt = 'webm';
+                if (MediaRecorder.isTypeSupported('video/mp4;codecs=avc1')) { videoMimeType = 'video/mp4;codecs=avc1'; videoExt = 'mp4'; } 
+                else if (MediaRecorder.isTypeSupported('video/mp4')) { videoMimeType = 'video/mp4'; videoExt = 'mp4'; } 
+
+                compIsIG = document.body.classList.contains('format-ig');
+                compFinalW = compIsIG ? 720 : 1280;
+                compFinalH = compIsIG ? 1280 : 720;
+
+                compCanvas = document.createElement('canvas');
+                compCanvas.width = compFinalW;
+                compCanvas.height = compFinalH;
+                compCtx = compCanvas.getContext('2d');
+
+                const overlay = document.getElementById('recordCountdownOverlay');
+                const num = document.getElementById('countdownNumber');
+                const title = document.getElementById('renderStatusTitle');
+                
+                title.innerText = "Tiché automatické nahrávání";
+                num.className = "text-9xl font-black text-white drop-shadow-[0_0_30px_rgba(16,185,129,0.8)]";
+
+                let count = 3; num.innerText = count;
+                num.classList.remove('anim-pop'); void num.offsetWidth; num.classList.add('anim-pop');
+
+                const countInt = setInterval(() => {
+                    count--;
+                    if(count > 0) {
+                        num.innerText = count; num.classList.remove('anim-pop'); void num.offsetWidth; num.classList.add('anim-pop');
+                    } else if (count === 0) {
+                        num.innerText = "AKCE!"; num.classList.remove('anim-pop'); void num.offsetWidth; num.classList.add('anim-pop'); num.classList.add('text-white');
+                    } else {
+                        clearInterval(countInt); overlay.style.opacity = '0';
+                        setTimeout(() => { overlay.style.display = 'none'; num.classList.remove('text-white'); }, 300);
+                        
+                        isRecording = true;
+                        
+                        // Zásadní změna pro plynulost - rAF smyčka
+                        renderLoopId = requestAnimationFrame(renderCanvasFrame);
+
+                        const canvasStream = compCanvas.captureStream(30);
+                        recordedChunks = [];
+                        mediaRecorder = new MediaRecorder(canvasStream, { mimeType: videoMimeType, videoBitsPerSecond: 6000000 });
+                        mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); };
+                        
+                        mediaRecorder.onstop = () => {
+                            isRecording = false;
+                            
+                            const btnRec = document.getElementById('btnStudioRecord');
+                            const btnText = document.getElementById('recordBtnText');
+                            const recordDot = document.getElementById('recordDot');
+                            btnRec.classList.replace('bg-slate-800', 'bg-red-600');
+                            btnText.innerText = "Nahrát tiché video";
+                            recordDot.classList.remove('pulse-recording');
+                            
+                            document.getElementById('hud-title').style.display = 'block';
+                            document.getElementById('hud-profile-container').style.opacity = '1';
+                            document.getElementById('hud-stats').style.display = 'flex';
+                            
+                            document.getElementById('studio-controls').style.opacity = '1';
+                            document.getElementById('studio-controls').style.pointerEvents = 'auto';
+
+                            const blob = new Blob(recordedChunks, { type: videoMimeType });
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a'); a.style.display = 'none'; a.href = url;
+                            
+                            const userFileName = document.getElementById('customRouteName').value.trim();
+                            a.download = `${userFileName ? userFileName : '3D-Trail'}.${videoExt}`;
+                            
+                            document.body.appendChild(a); a.click();
+                            setTimeout(() => { document.body.removeChild(a); window.URL.revokeObjectURL(url); }, 100);
+                            
+                            canvasStream.getTracks().forEach(track => track.stop());
+                            if (renderLoopId) cancelAnimationFrame(renderLoopId);
+                        };
+
+                        mediaRecorder.start();
+                        if (isRecording) cinematicStart();
+                    }
+                }, 1000);
+
+            } catch(e) {
+                console.log("Nahrávání zrušeno", e);
+                isCaching = false;
+                document.getElementById('studio-controls').style.opacity = '1';
+                document.getElementById('studio-controls').style.pointerEvents = 'auto';
+            }
+        }
+
+        function stopStudioRecording() {
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+            if (renderLoopId) cancelAnimationFrame(renderLoopId);
+            if (isCaching) {
+                isCaching = false;
+                speedFactor = originalSpeedFactor;
+                stopFlyover();
+                document.getElementById('recordCountdownOverlay').style.display = 'none';
+                document.getElementById('studio-controls').style.opacity = '1';
+                document.getElementById('studio-controls').style.pointerEvents = 'auto';
+                
+                document.getElementById('hud-title').style.display = 'block';
+                document.getElementById('hud-profile-container').style.opacity = '1';
+                document.getElementById('hud-stats').style.display = 'flex';
+            }
+        }
+
         function safeParseGPX(xmlText, fileName) {
             try {
                 const xml = new DOMParser().parseFromString(xmlText, 'text/xml');
@@ -849,6 +884,7 @@
 
                 let pts = [], dist = 0, eleGain = 0;
                 let minLat = 90, maxLat = -90, minLon = 180, maxLon = -180;
+                
                 const MIN_DIST_KM = 0.004;
 
                 for (let i = 0; i < trkpts.length; i++) {
@@ -864,7 +900,9 @@
 
                     if (pts.length > 0) {
                         const distToLast = calculateDistance(pts[pts.length-1].lat, pts[pts.length-1].lon, lat, lon);
-                        if (distToLast < MIN_DIST_KM && i !== trkpts.length - 1) continue; 
+                        if (distToLast < MIN_DIST_KM && i !== trkpts.length - 1) {
+                            continue; 
+                        }
                         dist += distToLast;
                         const eleDiff = ele - pts[pts.length-1].ele;
                         if(eleDiff > 0) eleGain += eleDiff;
@@ -874,6 +912,7 @@
                 
                 if(pts.length < 2) { alert("Trasa je příliš krátká."); return; }
                 totalElevationGain = Math.round(eleGain);
+                
                 const margin = 0.08; 
                 map.setMaxBounds([ [minLon - margin, minLat - margin], [maxLon + margin, maxLat + margin] ]);
 
@@ -888,17 +927,24 @@
 
         function loadGPXData(pts, dist, routeName) {
             gpxtrackData = pts; totalTrackDistance = dist;
+            
             resetFlyover(); 
+
             document.getElementById('routeNameHud').innerText = routeName;
             document.getElementById('customRouteName').value = routeName;
+            
             document.getElementById('hudTitleUnderline').style.display = routeName.trim() ? 'block' : 'none';
             document.getElementById('hudElevationGain').style.display = document.getElementById('showEleGain').checked ? 'block' : 'none';
+            
             document.getElementById('nameInputWrapper').style.display = "block";
             setTimeout(() => { document.getElementById('nameInputWrapper').style.opacity = "1"; }, 50);
+
             document.getElementById('animationControls').style.opacity = "1";
             document.getElementById('animationControls').style.pointerEvents = "auto";
+            
             document.getElementById('hud-title').style.display = 'block';
             document.getElementById('hud-stats').style.display = 'flex';
+            
             document.getElementById('hudDist').innerHTML = '0.0<span class="text-2xl text-slate-300 ml-1">km</span>';
             document.getElementById('hudEle').innerHTML = Math.round(currentExactEle) + '<span class="text-2xl text-slate-300 ml-1">m</span>';
             document.getElementById('eleGainVal').innerText = "0 m";
@@ -914,7 +960,10 @@
             const dropzone = document.getElementById('dropzone');
             const fileInput = document.getElementById('fileInput');
 
-            dropzone.addEventListener('click', (e) => { if(e.target !== fileInput) fileInput.click(); });
+            dropzone.addEventListener('click', (e) => {
+                if(e.target !== fileInput) fileInput.click();
+            });
+            
             fileInput.addEventListener('change', (e) => {
                 if (e.target.files.length > 0) {
                     const file = e.target.files[0]; const reader = new FileReader();
@@ -926,7 +975,8 @@
             dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('border-orange-500'); });
             dropzone.addEventListener('dragleave', (e) => { e.preventDefault(); dropzone.classList.remove('border-orange-500'); });
             dropzone.addEventListener('drop', (e) => {
-                e.preventDefault(); dropzone.classList.remove('border-orange-500');
+                e.preventDefault();
+                dropzone.classList.remove('border-orange-500');
                 if (e.dataTransfer.files.length > 0) {
                     const file = e.dataTransfer.files[0];
                     if(!file.name.toLowerCase().endsWith('.gpx')) { alert("Lze nahrát pouze .GPX soubory!"); return; }
@@ -945,22 +995,28 @@
             document.getElementById('btnSample').addEventListener('click', () => {
                 let pts = [], dist = 0, eleGain = 0; const sLat = 50.7294, sLon = 15.7292;
                 let minLat = 90, maxLat = -90, minLon = 180, maxLon = -180;
+
                 for (let i = 0; i <= 240; i++) {
                     const r = i / 240;
                     const lat = sLat + (50.7360 - sLat)*r + Math.sin(r*Math.PI*3.5)*0.003;
                     const lon = sLon + (15.7401 - sLon)*r + Math.cos(r*Math.PI*2.5)*0.005;
                     const ele = 760 + (1603 - 760)*r + Math.sin(r*Math.PI*6)*45;
+                    
                     if(lat < minLat) minLat = lat; if(lat > maxLat) maxLat = lat;
                     if(lon < minLon) minLon = lon; if(lon > maxLon) maxLon = lon;
+
                     if (i>0) {
                         dist += calculateDistance(pts[i-1].lat, pts[i-1].lon, lat, lon);
-                        const diff = ele - pts[i-1].ele; if(diff > 0) eleGain += diff;
+                        const diff = ele - pts[i-1].ele;
+                        if(diff > 0) eleGain += diff;
                     }
                     pts.push({ lat, lon, ele, dist, eleGain });
                 }
                 totalElevationGain = Math.round(eleGain);
+                
                 const margin = 0.08; 
                 map.setMaxBounds([ [minLon - margin, minLat - margin], [maxLon + margin, maxLat + margin] ]);
+                
                 loadGPXData(pts, dist, "VÝŠLAP NA SNĚŽKU 🏔️");
                 fetchAndDisplayPOIs(minLat, minLon, maxLat, maxLon);
             });
@@ -978,7 +1034,8 @@
             });
 
             document.getElementById('togglePois').addEventListener('click', (e) => {
-                if(e.target.disabled) return; poisVisible = !poisVisible;
+                if(e.target.disabled) return;
+                poisVisible = !poisVisible;
                 const vis = poisVisible ? 'visible' : 'none';
                 if(map.getLayer('poi-peaks')) map.setLayoutProperty('poi-peaks', 'visibility', vis);
                 if(map.getLayer('poi-places')) map.setLayoutProperty('poi-places', 'visibility', vis);
@@ -987,22 +1044,38 @@
             });
 
             document.getElementById('showProfile').addEventListener('change', drawHUDProfile);
+            
             document.getElementById('showEleGain').addEventListener('change', (e) => {
                 document.getElementById('hudElevationGain').style.display = e.target.checked && gpxtrackData.length > 0 ? 'block' : 'none';
             });
+
             document.getElementById('speedSelector').addEventListener('change', (e) => speedFactor = parseInt(e.target.value));
+            
             document.getElementById('formatSelector').addEventListener('change', (e) => {
-                if (e.target.value === '9-16') document.body.classList.add('format-ig'); else document.body.classList.remove('format-ig');
+                if (e.target.value === '9-16') {
+                    document.body.classList.add('format-ig');
+                } else {
+                    document.body.classList.remove('format-ig');
+                }
                 setTimeout(() => { map.resize(); drawHUDProfile(); }, 50);
             });
 
             document.getElementById('btnStudioMode').addEventListener('click', enterStudioMode);
             document.getElementById('btnStudioExit').addEventListener('click', exitStudioMode);
-            document.getElementById('btnPlay').addEventListener('click', () => { if(isPlaying) stopFlyover(); else cinematicStart(); });
-            document.getElementById('btnStudioPlay').addEventListener('click', () => { if(isPlaying) stopFlyover(); else cinematicStart(); });
+            
+            document.getElementById('btnPlay').addEventListener('click', () => {
+                if(isPlaying && !isCaching) stopFlyover(); else if(!isCaching) cinematicStart();
+            });
+
+            document.getElementById('btnStudioPlay').addEventListener('click', () => {
+                if(isPlaying && !isCaching) stopFlyover(); else if(!isCaching) cinematicStart();
+            });
+            
             document.getElementById('btnReset').addEventListener('click', resetFlyover);
             document.getElementById('btnStudioReset').addEventListener('click', resetFlyover);
+
             document.getElementById('btnStudioRecord').addEventListener('click', startStudioRecording);
+
             document.getElementById('btnStudioFullscreen').addEventListener('click', () => {
                 if (!document.fullscreenElement) {
                     document.documentElement.requestFullscreen().catch(err => {});
