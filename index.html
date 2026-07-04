@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GPX 3D Trail Director V43 - 720p HD Crop Fix</title>
+    <title>GPX 3D Trail Director V44 - GPU Shrink Optimization</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/maplibre-gl@4.3.2/dist/maplibre-gl.js"></script>
@@ -39,9 +39,30 @@
 
         body.studio-mode-active header, body.studio-mode-active footer, body.studio-mode-active .lg\:col-span-1, body.studio-mode-active .ad-space { display: none !important; }
         
-        body.studio-mode-active #map-wrapper { position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; z-index: 99990 !important; border-radius: 0 !important; max-width: none !important; margin: 0 !important; }
+        /* ZMĚNA V44: OMEZENÝ PROSTOR PRO ZVÝŠENÍ VÝKONU GPU (Už se neroztahuje na 100vw) */
+        body.studio-mode-active #map-wrapper { 
+            position: fixed !important; 
+            top: 50% !important; 
+            left: 50% !important; 
+            transform: translate(-50%, -50%) !important; 
+            width: 1280px !important; 
+            height: 720px !important; 
+            max-width: 90vw !important; 
+            max-height: 90vh !important; 
+            z-index: 99990 !important; 
+            border-radius: 16px !important; 
+            margin: 0 !important; 
+            box-shadow: 0 0 0 100vmax rgba(0,0,0,0.95); /* Zatemní pozadí okolo rámečku */
+        }
         
-        body.studio-mode-active.format-ig #map-wrapper { position: fixed !important; top: 0 !important; left: 50% !important; transform: translateX(-50%) !important; height: 100vh !important; width: auto !important; aspect-ratio: 9 / 16 !important; z-index: 99990 !important; border-radius: 0 !important; max-width: none !important; margin: 0 !important; background: #000; }
+        /* OMEZENÝ PROSTOR PRO IG REEL (9:16) */
+        body.studio-mode-active.format-ig #map-wrapper { 
+            width: auto !important; 
+            height: 800px !important; 
+            aspect-ratio: 9 / 16 !important; 
+            max-height: 90vh !important; 
+            background: #000; 
+        }
 
         #map { position: absolute; top: 0; left: 0; right: 0; bottom: 0; outline: none; }
         .hud-overlay { position: absolute; pointer-events: none; z-index: 10; text-shadow: 0px 3px 12px rgba(0, 0, 0, 0.9); }
@@ -67,7 +88,7 @@
                 </div>
                 <div>
                     <h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
-                        GPX 3D Trail Director <span class="bg-orange-500/10 text-orange-400 text-[10px] px-2.5 py-0.5 rounded-full uppercase font-extrabold border border-orange-500/30">V43 720p HD</span>
+                        GPX 3D Trail Director <span class="bg-orange-500/10 text-orange-400 text-[10px] px-2.5 py-0.5 rounded-full uppercase font-extrabold border border-orange-500/30">V44 GPU SHRINK</span>
                     </h1>
                 </div>
             </div>
@@ -172,7 +193,7 @@
                     
                     <button id="btnStudioMode" class="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-400 hover:to-red-400 text-white font-black py-4 px-4 rounded-xl transition flex flex-col justify-center items-center text-sm shadow-[0_0_20px_rgba(249,115,22,0.4)]">
                         📺 Přejít do STUDIO MÓDU
-                        <span class="text-[10px] text-white/80 mt-1 font-normal uppercase tracking-wider">Aktivuje nahrávání s ořezem do 720p HD</span>
+                        <span class="text-[10px] text-white/80 mt-1 font-normal uppercase tracking-wider">Zmenší mapu pro rychlé nahrávání</span>
                     </button>
                 </div>
             </div>
@@ -208,24 +229,23 @@
                 </div>
                 
                 <div id="recordCountdownOverlay" class="absolute inset-0 bg-black/80 z-[9999999] flex flex-col items-center justify-center transition-opacity duration-300" style="display:none; opacity:0;">
-                    <p class="text-orange-500 font-bold tracking-widest uppercase mb-4">Připravte se na let (Ořez 720p)</p>
+                    <p class="text-orange-500 font-bold tracking-widest uppercase mb-4 text-center px-4">Připravte se na let<br><span class="text-slate-400 text-[10px]">Vyberte "Karta v prohlížeči" pro sdílení obrazovky</span></p>
                     <div id="countdownNumber" class="text-9xl font-black text-white drop-shadow-[0_0_30px_rgba(249,115,22,0.8)]">3</div>
-                    <p class="text-slate-400 text-sm mt-8">Vyberte kartu v prohlížeči. Okno nechte co největší.</p>
                 </div>
 
                 <div id="studio-controls" class="absolute bottom-8 left-1/2 -translate-x-1/2 bg-slate-900/95 backdrop-blur-md border border-slate-700 p-3 rounded-2xl flex items-center gap-3 z-[999999] shadow-2xl transition-opacity duration-500 w-[90%] sm:w-auto overflow-hidden" style="display:none;">
-                    <button id="btnStudioFullscreen" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2.5 rounded-xl text-sm font-bold transition flex items-center gap-2 whitespace-nowrap">
-                        ⛶ Fullscreen
+                    <button id="btnStudioFullscreen" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2.5 rounded-xl text-sm font-bold transition flex items-center gap-2 whitespace-nowrap hidden sm:flex">
+                        ⛶ Zvětšit na celou
                     </button>
                     <div class="w-px h-8 bg-slate-700 mx-1 hidden sm:block"></div>
                     <button id="btnStudioReset" class="bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white px-4 py-2.5 rounded-xl text-sm font-bold transition whitespace-nowrap" title="Přetočit na začátek">
                         ⏮
                     </button>
                     <button id="btnStudioPlay" class="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition whitespace-nowrap">
-                        ▶ Otestovat let
+                        ▶ Otestovat
                     </button>
                     <button id="btnStudioRecord" class="bg-red-600 hover:bg-red-500 text-white px-6 py-2.5 rounded-xl text-sm font-bold transition flex items-center gap-2 shadow-[0_0_15px_rgba(220,38,38,0.5)] whitespace-nowrap">
-                        <span id="recordDot" class="w-2.5 h-2.5 bg-white rounded-full inline-block"></span> <span id="recordBtnText">Nahrát s ořezem (720p)</span>
+                        <span id="recordDot" class="w-2.5 h-2.5 bg-white rounded-full inline-block"></span> <span id="recordBtnText">Nahrát (Ořezané HD)</span>
                     </button>
                     <div class="w-px h-8 bg-slate-700 mx-1 hidden sm:block"></div>
                     <button id="btnStudioExit" class="text-slate-400 hover:text-white px-3 py-2.5 text-sm font-bold transition whitespace-nowrap">
@@ -241,7 +261,7 @@
         <p class="text-xs text-slate-500 uppercase tracking-widest font-semibold">
             Vytvořil <span class="text-orange-500 font-black">Wondraz</span> © 2026
         </p>
-        <span class="bg-slate-800 text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded border border-emerald-500/30">V43: 720p HD CROP FIX</span>
+        <span class="bg-slate-800 text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded border border-emerald-500/30">V44: GPU SHRINK BOX</span>
     </footer>
 
     <input type="file" id="fileInput" accept=".gpx" style="display:none;" />
@@ -269,7 +289,7 @@
         
         let mediaRecorder = null; let recordedChunks = []; let isRecording = false;
         
-        // Proměnné pro ořez s nižším rozlišením
+        // Proměnné pro ořez z obrazovky
         let cropHiddenVideo = null;
         let cropRafId = null;
 
@@ -563,7 +583,9 @@
             if (gpxtrackData.length === 0) { alert("Prosím, nejprve nahraj GPX trasu."); return; }
             inStudioMode = true;
             document.body.classList.add('studio-mode-active');
-            map.resize(); 
+            
+            // Pojistka, aby se mapový rámeček správně překreslil na novou zmenšenou velikost
+            setTimeout(() => { map.resize(); }, 100);
             
             const controls = document.getElementById('studio-controls');
             controls.style.display = 'flex';
@@ -578,7 +600,7 @@
 
             document.body.classList.remove('studio-mode-active');
             document.getElementById('studio-controls').style.display = 'none';
-            map.resize();
+            setTimeout(() => { map.resize(); }, 100);
         }
 
         window.addEventListener('keydown', (e) => {
@@ -593,9 +615,6 @@
             }
         });
 
-        // -------------------------------------------------------------
-        // ZMENŠENÝ CANVAS CROPPER (V43) - Rychlé nahrávání 720p pro M1
-        // -------------------------------------------------------------
         async function startStudioRecording() {
             if (isRecording) { stopStudioRecording(); return; }
             
@@ -606,7 +625,7 @@
                 if (MediaRecorder.isTypeSupported('video/mp4;codecs=avc1')) { videoMimeType = 'video/mp4;codecs=avc1'; videoExt = 'mp4'; } 
                 else if (MediaRecorder.isTypeSupported('video/mp4')) { videoMimeType = 'video/mp4'; videoExt = 'mp4'; } 
 
-                // Získání obrazu PŘES celou záložku (vracíme se k jistotě bez WebGL bugů, ale ořízneme to v menším)
+                // Získání obrazu z aktivní záložky
                 const rawStream = await navigator.mediaDevices.getDisplayMedia({ video: { displaySurface: "browser", frameRate: 30 }, audio: false, preferCurrentTab: true });
 
                 document.getElementById('studio-controls').style.opacity = '0';
@@ -614,7 +633,7 @@
 
                 const isIG = document.body.classList.contains('format-ig');
                 
-                // CROP NA PŘESNÉCH 720p HD (Mnohem menší zátěž pro CPU na Macu)
+                // CÍLOVÉ ROZLIŠENÍ: HD 720p (Menší datový tok a zátěž)
                 const finalWidth = isIG ? 720 : 1280;
                 const finalHeight = isIG ? 1280 : 720;
 
@@ -629,9 +648,9 @@
                 const recordCtx = recordCanvas.getContext('2d');
                 
                 const wrapper = document.getElementById('map-wrapper');
-                
                 isRecording = true;
                 
+                // OŘEZ A ŠKÁLOVÁNÍ V REÁLNÉM ČASE
                 function drawCropFrame() {
                     if (!isRecording) return;
                     
@@ -641,7 +660,7 @@
                     if (vw > 0 && vh > 0) {
                         const rect = wrapper.getBoundingClientRect();
                         
-                        // Zabezpečení pro Retina displeje (okno prohlížeče se liší od reálných pixelů videa)
+                        // Zabezpečení pro Retina displeje (okno prohlížeče se liší od pixelů ve videu)
                         const scaleX = vw / window.innerWidth;
                         const scaleY = vh / window.innerHeight;
 
@@ -652,18 +671,16 @@
 
                         recordCtx.fillStyle = '#000';
                         recordCtx.fillRect(0, 0, finalWidth, finalHeight);
-                        // Oříznutí konkrétní mapy a VYKRESLENÍ DO ZMENŠENÉHO ROZLIŠENÍ (HD 720p)
+                        // Zde probíhá kouzlo: oříznutí vnitřního "menšího rámečku" a roztažení na 720p HD.
                         recordCtx.drawImage(cropHiddenVideo, cropX, cropY, cropW, cropH, 0, 0, finalWidth, finalHeight);
                     }
                     cropRafId = requestAnimationFrame(drawCropFrame);
                 }
-                
                 drawCropFrame();
 
                 const canvasStream = recordCanvas.captureStream(30);
                 recordedChunks = [];
 
-                // Bitrate pro 720p = 5 Mbps (nenáročné kódování)
                 mediaRecorder = new MediaRecorder(canvasStream, { mimeType: videoMimeType, videoBitsPerSecond: 5000000 });
                 mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); };
                 
@@ -674,7 +691,7 @@
                     const btnText = document.getElementById('recordBtnText');
                     const recordDot = document.getElementById('recordDot');
                     btnRec.classList.replace('bg-slate-800', 'bg-red-600');
-                    btnText.innerText = "Nahrát s ořezem (720p)";
+                    btnText.innerText = "Nahrát (Ořezané HD)";
                     recordDot.classList.remove('pulse-recording');
                     
                     document.getElementById('studio-controls').style.opacity = '1';
@@ -744,6 +761,7 @@
                 let pts = [], dist = 0, eleGain = 0;
                 let minLat = 90, maxLat = -90, minLon = 180, maxLon = -180;
                 
+                // NÁŠ ANTI-JITTER FILTR - Vyřeší ty pauzy ze souboru!
                 const MIN_DIST_KM = 0.004;
 
                 for (let i = 0; i < trkpts.length; i++) {
