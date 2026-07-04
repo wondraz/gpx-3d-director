@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GPX 3D Trail Director V38 - Smooth Recording Optimization</title>
+    <title>GPX 3D Trail Director V39 - Timing Fix & Anti-Jitter Filter</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/maplibre-gl@4.3.2/dist/maplibre-gl.js"></script>
@@ -50,6 +50,9 @@
         
         @keyframes popIn { 0% { transform: scale(0.5); opacity: 0; } 70% { transform: scale(1.2); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
         .anim-pop { animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+        
+        @keyframes pulseRec { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+        .pulse-recording { animation: pulseRec 1.5s infinite; }
     </style>
 </head>
 <body class="bg-slate-950 text-slate-100 font-sans min-h-screen flex flex-col overflow-x-hidden">
@@ -64,7 +67,7 @@
                 </div>
                 <div>
                     <h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
-                        GPX 3D Trail Director <span class="bg-orange-500/10 text-orange-400 text-[10px] px-2.5 py-0.5 rounded-full uppercase font-extrabold border border-orange-500/30">V38 OPTIMIZED</span>
+                        GPX 3D Trail Director <span class="bg-orange-500/10 text-orange-400 text-[10px] px-2.5 py-0.5 rounded-full uppercase font-extrabold border border-orange-500/30">V39 TIMING FIX</span>
                     </h1>
                 </div>
             </div>
@@ -119,6 +122,14 @@
                                 <option value="6">Pohoda</option>
                                 <option value="16" selected>Svižný let</option>
                                 <option value="36">Super rychlost</option>
+                            </select>
+                        </div>
+                        <div class="flex flex-col gap-1">
+                            <span class="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Úhel kamery</span>
+                            <select id="cameraPitchSelect" class="bg-slate-800 border border-slate-700 rounded-lg px-2 py-1.5 text-[11px] font-semibold text-white outline-none w-full cursor-pointer">
+                                <option value="45">45° (Dron)</option>
+                                <option value="65" selected>65° (Akční)</option>
+                                <option value="75">75° (Závodní)</option>
                             </select>
                         </div>
 
@@ -238,8 +249,8 @@
         let animationFrameId = null; 
         let inStudioMode = false;
         let poisVisible = true;
+        let isFinishingRec = false; // Flag pro zpoždění na konci letu
 
-        // Globální proměnné pro vykreslování dat do čistého Canvas záznamu
         let currentExactDist = 0;
         let currentExactEle = 0;
         let currentExactEleGain = 0;
@@ -252,7 +263,7 @@
         function initMap() {
             map = new maplibregl.Map({
                 container: 'map',
-                preserveDrawingBuffer: true, // EXTRÉMNĚ DŮLEŽITÉ: Povoluje zachytávání WebGL vrstvy
+                preserveDrawingBuffer: true,
                 style: {
                     version: 8,
                     glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
@@ -414,22 +425,34 @@
                 }
             } else currentIdx += (speedFactor * 0.015);
 
+            // LOGIKA PRO 2S PŘESTÁVKU NA KONCI LETU
             if (currentIdx >= gpxtrackData.length - 1) { 
-                stopFlyover(); 
-                if(isRecording) stopStudioRecording(); 
-                return; 
+                currentIdx = gpxtrackData.length - 1; // zafixujeme na konci
+                
+                if (!isFinishingRec) {
+                    isFinishingRec = true;
+                    // Počkáme 2 vteřiny a pak teprve vypneme let a nahrávání
+                    setTimeout(() => {
+                        stopFlyover(); 
+                        if(isRecording) stopStudioRecording(); 
+                    }, 2000);
+                }
+                // NEUKONČUJEME ZDE FUNKCI, necháme běžet rendering, aby se nahrával ten stojící obraz
             }
 
-            const fraction = currentIdx % 1, pt = gpxtrackData[Math.floor(currentIdx)], nextPt = gpxtrackData[Math.floor(currentIdx) + 1];
+            // Bezpečný výpočet aktuální pozice pro plynulý dolet
+            let idx = Math.floor(currentIdx);
+            let nextIdx = Math.min(idx + 1, gpxtrackData.length - 1);
+            let fraction = currentIdx === gpxtrackData.length - 1 ? 1 : currentIdx % 1;
+
+            const pt = gpxtrackData[idx], nextPt = gpxtrackData[nextIdx];
             currentExactLat = pt.lat + (nextPt.lat - pt.lat) * fraction;
             currentExactLon = pt.lon + (nextPt.lon - pt.lon) * fraction;
             
-            // Uložení pro Canvas Composer
             currentExactDist = pt.dist + (nextPt.dist - pt.dist) * fraction;
             currentExactEleGain = pt.eleGain + (nextPt.eleGain - pt.eleGain) * fraction;
             currentExactEle = pt.ele + (nextPt.ele - pt.ele) * fraction;
 
-            // HTML Vykreslování
             document.getElementById('hudDist').innerHTML = currentExactDist.toFixed(1) + '<span class="text-2xl text-slate-300 ml-1">km</span>';
             document.getElementById('hudEle').innerHTML = Math.round(currentExactEle) + '<span class="text-2xl text-slate-300 ml-1">m</span>';
             document.getElementById('eleGainVal').innerText = Math.round(currentExactEleGain) + " m";
@@ -440,7 +463,7 @@
             map.setPaintProperty('route-glow', 'line-gradient', ['step', ['line-progress'], '#ef4444', lineProgress, 'rgba(0,0,0,0)']);
             map.setPaintProperty('route-line', 'line-gradient', ['step', ['line-progress'], '#f97316', lineProgress, 'rgba(0,0,0,0)']);
 
-            let lookAheadIdx = Math.min(Math.floor(currentIdx) + speedFactor * 3, gpxtrackData.length - 1);
+            let lookAheadIdx = Math.min(idx + speedFactor * 3, gpxtrackData.length - 1);
             let targetBearing = getBearing(currentExactLat, currentExactLon, gpxtrackData[lookAheadIdx].lat, gpxtrackData[lookAheadIdx].lon);
 
             smoothLat += (currentExactLat - smoothLat) * 0.08; smoothLon += (currentExactLon - smoothLon) * 0.08;
@@ -453,6 +476,7 @@
 
         function stopFlyover() {
             isPlaying = false;
+            isFinishingRec = false;
             if (animationFrameId) { cancelAnimationFrame(animationFrameId); animationFrameId = null; }
             updatePlayUI();
         }
@@ -519,9 +543,6 @@
             }
         });
 
-        // -------------------------------------------------------------
-        // OPTIMALIZOVANÝ CANVAS COMPOSITOR (V38)
-        // -------------------------------------------------------------
         async function startStudioRecording() {
             if (isRecording) { stopStudioRecording(); return; }
             
@@ -549,9 +570,6 @@
                 const mapCanvas = map.getCanvas();
                 const profCanvas = document.getElementById('profileCanvas');
                 
-                isRecording = true;
-                
-                // Pomocná funkce pro rychlé texty s obrysem (místo pomalého shadowBlur)
                 function drawTextWithOutline(text, x, y) {
                     ctx.strokeText(text, x, y);
                     ctx.fillText(text, x, y);
@@ -563,7 +581,6 @@
                     ctx.fillStyle = '#000';
                     ctx.fillRect(0, 0, finalW, finalH);
 
-                    // 1. Zkopírování mapy
                     const mw = mapCanvas.width;
                     const mh = mapCanvas.height;
                     if (mw > 0 && mh > 0) {
@@ -575,7 +592,6 @@
                         ctx.drawImage(mapCanvas, drawX, drawY, drawW, drawH);
                     }
 
-                    // 2. Graf
                     if (document.getElementById('showProfile').checked && gpxtrackData.length > 0) {
                         const pW = profCanvas.width;
                         const pH = profCanvas.height;
@@ -585,7 +601,6 @@
                         ctx.drawImage(profCanvas, (finalW - targetW)/2, finalH - drawH - (isIG ? 200 : 150), targetW, drawH);
                     }
 
-                    // 3. Texty s obrysy (Rychlejší rendering)
                     ctx.lineJoin = "round";
                     ctx.lineWidth = 6;
                     ctx.strokeStyle = "rgba(0, 0, 0, 0.85)";
@@ -665,50 +680,6 @@
                     }
                 }
                 
-                // Místo requestAnimationFrame pro kreslení používáme striktní interval 30 FPS.
-                compIntervalId = setInterval(drawCanvasFrame, 1000 / 30);
-
-                // Nahráváme s plynulými 30 FPS místo 60 FPS
-                const canvasStream = compCanvas.captureStream(30);
-                recordedChunks = [];
-
-                // Snížen bitrate na optimalizovaných 8Mbps
-                mediaRecorder = new MediaRecorder(canvasStream, { mimeType: videoMimeType, videoBitsPerSecond: 8000000 });
-                mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); };
-                
-                mediaRecorder.onstop = () => {
-                    isRecording = false;
-                    
-                    const btnRec = document.getElementById('btnStudioRecord');
-                    const btnText = document.getElementById('recordBtnText');
-                    const recordDot = document.getElementById('recordDot');
-                    btnRec.classList.replace('bg-slate-800', 'bg-red-600');
-                    btnText.innerText = "Nahrát tiché video";
-                    recordDot.classList.remove('pulse-recording');
-                    
-                    document.getElementById('hud-title').style.display = 'block';
-                    document.getElementById('hud-profile-container').style.opacity = '1';
-                    document.getElementById('hud-stats').style.display = 'flex';
-                    
-                    document.getElementById('studio-controls').style.opacity = '1';
-                    document.getElementById('studio-controls').style.pointerEvents = 'auto';
-
-                    const blob = new Blob(recordedChunks, { type: videoMimeType });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a'); a.style.display = 'none'; a.href = url;
-                    
-                    const userFileName = document.getElementById('customRouteName').value.trim();
-                    a.download = `${userFileName ? userFileName : '3D-Trail'}.${videoExt}`;
-                    
-                    document.body.appendChild(a); a.click();
-                    setTimeout(() => { document.body.removeChild(a); window.URL.revokeObjectURL(url); }, 100);
-                    
-                    canvasStream.getTracks().forEach(track => track.stop());
-                    if (compIntervalId) clearInterval(compIntervalId);
-                };
-
-                mediaRecorder.start();
-                
                 const overlay = document.getElementById('recordCountdownOverlay');
                 const num = document.getElementById('countdownNumber');
                 overlay.style.display = 'flex'; overlay.offsetHeight; overlay.style.opacity = '1';
@@ -725,12 +696,54 @@
                     } else {
                         clearInterval(countInt); overlay.style.opacity = '0';
                         setTimeout(() => { overlay.style.display = 'none'; num.classList.remove('text-white'); }, 300);
+                        
+                        // ZAPNUTÍ NAHRÁVÁNÍ AŽ PO ODPOČTU
+                        isRecording = true;
+                        compIntervalId = setInterval(drawCanvasFrame, 1000 / 30);
+
+                        const canvasStream = compCanvas.captureStream(30);
+                        recordedChunks = [];
+                        mediaRecorder = new MediaRecorder(canvasStream, { mimeType: videoMimeType, videoBitsPerSecond: 8000000 });
+                        mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); };
+                        
+                        mediaRecorder.onstop = () => {
+                            isRecording = false;
+                            
+                            const btnRec = document.getElementById('btnStudioRecord');
+                            const btnText = document.getElementById('recordBtnText');
+                            const recordDot = document.getElementById('recordDot');
+                            btnRec.classList.replace('bg-slate-800', 'bg-red-600');
+                            btnText.innerText = "Nahrát tiché video";
+                            recordDot.classList.remove('pulse-recording');
+                            
+                            document.getElementById('hud-title').style.display = 'block';
+                            document.getElementById('hud-profile-container').style.opacity = '1';
+                            document.getElementById('hud-stats').style.display = 'flex';
+                            
+                            document.getElementById('studio-controls').style.opacity = '1';
+                            document.getElementById('studio-controls').style.pointerEvents = 'auto';
+
+                            const blob = new Blob(recordedChunks, { type: videoMimeType });
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a'); a.style.display = 'none'; a.href = url;
+                            
+                            const userFileName = document.getElementById('customRouteName').value.trim();
+                            a.download = `${userFileName ? userFileName : '3D-Trail'}.${videoExt}`;
+                            
+                            document.body.appendChild(a); a.click();
+                            setTimeout(() => { document.body.removeChild(a); window.URL.revokeObjectURL(url); }, 100);
+                            
+                            canvasStream.getTracks().forEach(track => track.stop());
+                            if (compIntervalId) clearInterval(compIntervalId);
+                        };
+
+                        mediaRecorder.start();
                         if (isRecording) cinematicStart();
                     }
                 }, 1000);
 
             } catch(e) {
-                console.log("Nahrávání zrušeno", e);
+                console.log("Nahrávání zrušeno nebo bezpečnostní chyba Canvasu", e);
                 document.getElementById('studio-controls').style.opacity = '1';
                 document.getElementById('studio-controls').style.pointerEvents = 'auto';
             }
@@ -749,6 +762,9 @@
 
                 let pts = [], dist = 0, eleGain = 0;
                 let minLat = 90, maxLat = -90, minLon = 180, maxLon = -180;
+                
+                // Anti-Jitter Filtr: Ignorovat body blíž než 4 metry (0.004 km)
+                const MIN_DIST_KM = 0.004;
 
                 for (let i = 0; i < trkpts.length; i++) {
                     const latNode = trkpts[i].getAttribute('lat'), lonNode = trkpts[i].getAttribute('lon');
@@ -762,7 +778,14 @@
                     if(lon < minLon) minLon = lon; if(lon > maxLon) maxLon = lon;
 
                     if (pts.length > 0) {
-                        dist += calculateDistance(pts[pts.length-1].lat, pts[pts.length-1].lon, lat, lon);
+                        const distToLast = calculateDistance(pts[pts.length-1].lat, pts[pts.length-1].lon, lat, lon);
+                        
+                        // Zde funguje filtr: pokud je posun menší než 4 metry a NENÍ to úplně poslední bod trasy, ignoruj ho
+                        if (distToLast < MIN_DIST_KM && i !== trkpts.length - 1) {
+                            continue; 
+                        }
+                        
+                        dist += distToLast;
                         const eleDiff = ele - pts[pts.length-1].ele;
                         if(eleDiff > 0) eleGain += eleDiff;
                     }
