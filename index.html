@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GPX 3D Trail Director V39 - Timing Fix & Anti-Jitter Filter</title>
+    <title>GPX 3D Trail Director V40 - Rewind Fix</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/maplibre-gl@4.3.2/dist/maplibre-gl.js"></script>
@@ -67,7 +67,7 @@
                 </div>
                 <div>
                     <h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
-                        GPX 3D Trail Director <span class="bg-orange-500/10 text-orange-400 text-[10px] px-2.5 py-0.5 rounded-full uppercase font-extrabold border border-orange-500/30">V39 TIMING FIX</span>
+                        GPX 3D Trail Director <span class="bg-orange-500/10 text-orange-400 text-[10px] px-2.5 py-0.5 rounded-full uppercase font-extrabold border border-orange-500/30">V40 PRO</span>
                     </h1>
                 </div>
             </div>
@@ -104,9 +104,15 @@
             <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl" id="animationControls" style="opacity:0.3; pointer-events:none;">
                 <h2 class="font-bold text-slate-400 mb-2 text-xs uppercase tracking-wider">2. Režie kamery</h2>
                 <div class="flex flex-col gap-3">
-                    <button id="btnPlay" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-black py-3 rounded-xl text-sm transition-all flex justify-center items-center gap-2 shadow-lg">
-                        <span id="playIcon">▶</span> <span id="playText">Testovací let (Zde)</span>
-                    </button>
+                    
+                    <div class="flex gap-2">
+                        <button id="btnPlay" class="flex-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-black py-3 rounded-xl text-sm transition-all flex justify-center items-center gap-2 shadow-lg">
+                            <span id="playIcon">▶</span> <span id="playText">Testovací let (Zde)</span>
+                        </button>
+                        <button id="btnReset" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white font-black px-4 rounded-xl transition-all shadow-lg flex justify-center items-center" title="Přetočit na začátek">
+                            ⏮
+                        </button>
+                    </div>
                     
                     <div class="grid grid-cols-2 gap-2 mt-1">
                         <div class="col-span-2 flex flex-col gap-1">
@@ -211,6 +217,9 @@
                         ⛶ Fullscreen
                     </button>
                     <div class="w-px h-8 bg-slate-700 mx-1 hidden sm:block"></div>
+                    <button id="btnStudioReset" class="bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white px-4 py-2.5 rounded-xl text-sm font-bold transition whitespace-nowrap" title="Přetočit na začátek">
+                        ⏮
+                    </button>
                     <button id="btnStudioPlay" class="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition whitespace-nowrap">
                         ▶ Otestovat let
                     </button>
@@ -249,7 +258,7 @@
         let animationFrameId = null; 
         let inStudioMode = false;
         let poisVisible = true;
-        let isFinishingRec = false; // Flag pro zpoždění na konci letu
+        let isFinishingRec = false;
 
         let currentExactDist = 0;
         let currentExactEle = 0;
@@ -389,8 +398,41 @@
             });
         }
 
+        // NOVINKA: PŘETOČENÍ NA START
+        function resetFlyover() {
+            stopFlyover();
+            currentIdx = 0;
+            currentAnimDist = 0;
+            isFinishingRec = false;
+            
+            if (gpxtrackData.length > 0) {
+                smoothLat = gpxtrackData[0].lat;
+                smoothLon = gpxtrackData[0].lon;
+                smoothBearing = gpxtrackData.length > 1 ? getBearing(smoothLat, smoothLon, gpxtrackData[1].lat, gpxtrackData[1].lon) : 0;
+                
+                map.jumpTo({ center: [smoothLon, smoothLat], zoom: 12, pitch: 30, bearing: 0 });
+                
+                currentExactDist = 0;
+                currentExactEleGain = 0;
+                currentExactEle = gpxtrackData[0].ele;
+                
+                document.getElementById('hudDist').innerHTML = '0.0<span class="text-2xl text-slate-300 ml-1">km</span>';
+                document.getElementById('hudEle').innerHTML = Math.round(currentExactEle) + '<span class="text-2xl text-slate-300 ml-1">m</span>';
+                document.getElementById('eleGainVal').innerText = "0 m";
+                
+                map.setPaintProperty('route-glow', 'line-gradient', ['step', ['line-progress'], '#ef4444', 0.0001, 'rgba(0,0,0,0)']);
+                map.setPaintProperty('route-line', 'line-gradient', ['step', ['line-progress'], '#f97316', 0.0001, 'rgba(0,0,0,0)']);
+                drawHUDProfile();
+            }
+        }
+
         async function cinematicStart() {
             if (gpxtrackData.length === 0) { alert("Prosím, nejprve nahraj GPX trasu."); return; }
+            
+            // OPRAVA: Pokud jsme na konci trasy, přetočíme automaticky na start
+            if (currentIdx >= gpxtrackData.length - 1) {
+                resetFlyover();
+            }
             
             if(!isPlaying && currentIdx === 0) {
                 smoothLat = gpxtrackData[0].lat; smoothLon = gpxtrackData[0].lon;
@@ -403,7 +445,10 @@
                     document.getElementById('studio-controls').style.pointerEvents = 'none';
                 }
 
-                map.flyTo({ center: [gpxtrackData[0].lon, gpxtrackData[0].lat], zoom: 14.5, pitch: 65, bearing: smoothBearing, duration: 1800, essential: true });
+                let targetPitchStr = document.getElementById('cameraPitchSelect').value;
+                let tPitch = parseInt(targetPitchStr) || 65;
+
+                map.flyTo({ center: [gpxtrackData[0].lon, gpxtrackData[0].lat], zoom: 14.5, pitch: tPitch, bearing: smoothBearing, duration: 1800, essential: true });
                 await new Promise(r => setTimeout(r, 1900));
             }
 
@@ -425,22 +470,18 @@
                 }
             } else currentIdx += (speedFactor * 0.015);
 
-            // LOGIKA PRO 2S PŘESTÁVKU NA KONCI LETU
             if (currentIdx >= gpxtrackData.length - 1) { 
-                currentIdx = gpxtrackData.length - 1; // zafixujeme na konci
+                currentIdx = gpxtrackData.length - 1; 
                 
                 if (!isFinishingRec) {
                     isFinishingRec = true;
-                    // Počkáme 2 vteřiny a pak teprve vypneme let a nahrávání
                     setTimeout(() => {
                         stopFlyover(); 
                         if(isRecording) stopStudioRecording(); 
                     }, 2000);
                 }
-                // NEUKONČUJEME ZDE FUNKCI, necháme běžet rendering, aby se nahrával ten stojící obraz
             }
 
-            // Bezpečný výpočet aktuální pozice pro plynulý dolet
             let idx = Math.floor(currentIdx);
             let nextIdx = Math.min(idx + 1, gpxtrackData.length - 1);
             let fraction = currentIdx === gpxtrackData.length - 1 ? 1 : currentIdx % 1;
@@ -466,17 +507,19 @@
             let lookAheadIdx = Math.min(idx + speedFactor * 3, gpxtrackData.length - 1);
             let targetBearing = getBearing(currentExactLat, currentExactLon, gpxtrackData[lookAheadIdx].lat, gpxtrackData[lookAheadIdx].lon);
 
+            let targetPitchStr = document.getElementById('cameraPitchSelect').value;
+            let tPitch = parseInt(targetPitchStr) || 65;
+
             smoothLat += (currentExactLat - smoothLat) * 0.08; smoothLon += (currentExactLon - smoothLon) * 0.08;
             let diff = targetBearing - smoothBearing; while (diff < -180) diff += 360; while (diff > 180) diff -= 360;
-            smoothBearing += diff * 0.04; smoothPitch += (65 - smoothPitch) * 0.08;
+            smoothBearing += diff * 0.04; smoothPitch += (tPitch - smoothPitch) * 0.05;
 
-            map.jumpTo({ center: [smoothLon, smoothLat], bearing: smoothBearing, pitch: smoothPitch, zoom: 14.5 });
+            map.jumpTo({ center: [smoothLon, smoothLat], bearing: smoothBearing, pitch: smoothPitch, zoom: tPitch > 65 ? 15.5 : 14.5 });
             animationFrameId = requestAnimationFrame(gameLoop);
         }
 
         function stopFlyover() {
             isPlaying = false;
-            isFinishingRec = false;
             if (animationFrameId) { cancelAnimationFrame(animationFrameId); animationFrameId = null; }
             updatePlayUI();
         }
@@ -543,9 +586,15 @@
             }
         });
 
+        // -------------------------------------------------------------
+        // OPTIMALIZOVANÝ CANVAS COMPOSITOR (V40)
+        // -------------------------------------------------------------
         async function startStudioRecording() {
             if (isRecording) { stopStudioRecording(); return; }
             
+            // Pro jistotu resetujeme na start před nahráváním
+            resetFlyover();
+
             try {
                 let videoMimeType = 'video/webm;codecs=vp9'; let videoExt = 'webm';
                 if (MediaRecorder.isTypeSupported('video/mp4;codecs=avc1')) { videoMimeType = 'video/mp4;codecs=avc1'; videoExt = 'mp4'; } 
@@ -697,7 +746,6 @@
                         clearInterval(countInt); overlay.style.opacity = '0';
                         setTimeout(() => { overlay.style.display = 'none'; num.classList.remove('text-white'); }, 300);
                         
-                        // ZAPNUTÍ NAHRÁVÁNÍ AŽ PO ODPOČTU
                         isRecording = true;
                         compIntervalId = setInterval(drawCanvasFrame, 1000 / 30);
 
@@ -743,7 +791,7 @@
                 }, 1000);
 
             } catch(e) {
-                console.log("Nahrávání zrušeno nebo bezpečnostní chyba Canvasu", e);
+                console.log("Nahrávání zrušeno nebo chyba Canvasu", e);
                 document.getElementById('studio-controls').style.opacity = '1';
                 document.getElementById('studio-controls').style.pointerEvents = 'auto';
             }
@@ -763,7 +811,6 @@
                 let pts = [], dist = 0, eleGain = 0;
                 let minLat = 90, maxLat = -90, minLon = 180, maxLon = -180;
                 
-                // Anti-Jitter Filtr: Ignorovat body blíž než 4 metry (0.004 km)
                 const MIN_DIST_KM = 0.004;
 
                 for (let i = 0; i < trkpts.length; i++) {
@@ -779,12 +826,9 @@
 
                     if (pts.length > 0) {
                         const distToLast = calculateDistance(pts[pts.length-1].lat, pts[pts.length-1].lon, lat, lon);
-                        
-                        // Zde funguje filtr: pokud je posun menší než 4 metry a NENÍ to úplně poslední bod trasy, ignoruj ho
                         if (distToLast < MIN_DIST_KM && i !== trkpts.length - 1) {
                             continue; 
                         }
-                        
                         dist += distToLast;
                         const eleDiff = ele - pts[pts.length-1].ele;
                         if(eleDiff > 0) eleGain += eleDiff;
@@ -810,16 +854,12 @@
         function loadGPXData(pts, dist, routeName) {
             gpxtrackData = pts; totalTrackDistance = dist;
             
-            currentIdx = 0; currentAnimDist = 0;
-            currentExactDist = 0; currentExactEle = pts[0].ele; currentExactEleGain = 0;
-            stopFlyover();
+            resetFlyover(); // Tím se vše hezky vynuluje hned po nahrání dat
 
             document.getElementById('routeNameHud').innerText = routeName;
             document.getElementById('customRouteName').value = routeName;
             
             document.getElementById('hudTitleUnderline').style.display = routeName.trim() ? 'block' : 'none';
-            
-            document.getElementById('eleGainVal').innerText = "0 m";
             document.getElementById('hudElevationGain').style.display = document.getElementById('showEleGain').checked ? 'block' : 'none';
             
             document.getElementById('nameInputWrapper').style.display = "block";
@@ -830,12 +870,6 @@
             
             document.getElementById('hud-title').style.display = 'block';
             document.getElementById('hud-stats').style.display = 'flex';
-            document.getElementById('hudDist').innerHTML = '0.0<span class="text-2xl text-slate-300 ml-1">km</span>';
-            document.getElementById('hudEle').innerHTML = Math.round(pts[0].ele) + '<span class="text-2xl text-slate-300 ml-1">m</span>';
-
-            addRouteToMap();
-            drawHUDProfile(); 
-            map.jumpTo({ center: [pts[0].lon, pts[0].lat], zoom: 12, pitch: 0 });
         }
 
         window.addEventListener('load', () => {
@@ -954,6 +988,10 @@
             document.getElementById('btnStudioPlay').addEventListener('click', () => {
                 if(isPlaying) stopFlyover(); else cinematicStart();
             });
+            
+            // TLAČÍTKA PRO PŘETOČENÍ
+            document.getElementById('btnReset').addEventListener('click', resetFlyover);
+            document.getElementById('btnStudioReset').addEventListener('click', resetFlyover);
 
             document.getElementById('btnStudioRecord').addEventListener('click', startStudioRecording);
 
