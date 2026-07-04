@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GPX 3D Trail Director V31 - IG Column Menu</title>
+    <title>GPX 3D Trail Director V37 - Silent Canvas Recording</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/maplibre-gl@4.3.2/dist/maplibre-gl.js"></script>
@@ -16,14 +16,8 @@
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7); transition: all 0.3s ease;
         }
         
-        /* ŽIVÝ PREVIEW INSTAGRAM MÓDU V EDITORU */
-        body.format-ig #map-wrapper {
-            aspect-ratio: 9 / 16 !important;
-            max-width: 400px;
-            margin: 0 auto;
-        }
+        body.format-ig #map-wrapper { aspect-ratio: 9 / 16 !important; max-width: 400px; margin: 0 auto; }
         
-        /* ZMENŠENÍ A VYCENTROVÁNÍ HUD PRO INSTAGRAM (9:16) */
         body.format-ig #hud-stats { padding-left: 1rem !important; padding-right: 1rem !important; bottom: 1.5rem !important; justify-content: center !important; }
         body.format-ig #hud-stats .flex.gap-8 { gap: 1rem !important; padding: 0.75rem 1.25rem !important; border-radius: 1.25rem !important; width: 100%; justify-content: center; }
         body.format-ig .border-l.pl-8 { padding-left: 1rem !important; }
@@ -38,67 +32,27 @@
         
         body.format-ig #hud-profile-container { bottom: 120px !important; left: 1rem !important; right: 1rem !important; height: 50px !important; }
         
-        /* NOVINKA V31: OVLÁDACÍ MENU DO SLOUPKU PRO IG MÓD */
-        body.format-ig #studio-controls {
-            flex-direction: column !important;
-            top: 50% !important;
-            bottom: auto !important;
-            transform: translate(-50%, -50%) !important;
-            width: 260px !important;
-            padding: 1.5rem !important;
-        }
-        body.format-ig #studio-controls button {
-            width: 100% !important;
-            justify-content: center !important;
-            padding-top: 0.875rem !important;
-            padding-bottom: 0.875rem !important;
-        }
-        body.format-ig #studio-controls .w-px {
-            display: none !important; /* Skryje svislé dělicí čáry */
-        }
-        body.format-ig #studio-controls .absolute.-top-6 {
-            position: relative !important;
-            top: 0 !important;
-            left: 0 !important;
-            margin-bottom: 0.5rem !important;
-            text-align: center !important;
-            width: 100% !important;
-            white-space: normal !important;
-        }
+        body.format-ig #studio-controls { flex-direction: column !important; top: 50% !important; bottom: auto !important; transform: translate(-50%, -50%) !important; width: 260px !important; padding: 1.5rem !important; }
+        body.format-ig #studio-controls button { width: 100% !important; justify-content: center !important; padding-top: 0.875rem !important; padding-bottom: 0.875rem !important; }
+        body.format-ig #studio-controls .w-px { display: none !important; }
+        body.format-ig #studio-controls .absolute.-top-6 { position: relative !important; top: 0 !important; left: 0 !important; margin-bottom: 0.5rem !important; text-align: center !important; width: 100% !important; white-space: normal !important; }
 
-        /* STUDIO MÓD - SKRYTÍ VŠEHO OKOLO */
-        body.studio-mode-active header,
-        body.studio-mode-active footer,
-        body.studio-mode-active .lg\:col-span-1,
-        body.studio-mode-active .ad-space {
-            display: none !important;
-        }
+        body.studio-mode-active header, body.studio-mode-active footer, body.studio-mode-active .lg\:col-span-1, body.studio-mode-active .ad-space { display: none !important; }
         
-        /* ŠIROKOÚHLÉ STUDIO */
-        body.studio-mode-active #map-wrapper {
-            position: fixed !important; top: 0 !important; left: 0 !important; 
-            width: 100vw !important; height: 100vh !important;
-            z-index: 99990 !important; border-radius: 0 !important;
-            max-width: none !important; margin: 0 !important;
-        }
+        body.studio-mode-active #map-wrapper { position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; z-index: 99990 !important; border-radius: 0 !important; max-width: none !important; margin: 0 !important; }
         
-        /* INSTAGRAM REEL STUDIO (Svislý pruh uprostřed černé obrazovky) */
-        body.studio-mode-active.format-ig #map-wrapper {
-            position: fixed !important; top: 0 !important; left: 50% !important;
-            transform: translateX(-50%) !important;
-            height: 100vh !important; width: auto !important;
-            aspect-ratio: 9 / 16 !important;
-            z-index: 99990 !important; border-radius: 0 !important;
-            max-width: none !important; margin: 0 !important;
-            background: #000;
-        }
+        body.studio-mode-active.format-ig #map-wrapper { position: fixed !important; top: 0 !important; left: 50% !important; transform: translateX(-50%) !important; height: 100vh !important; width: auto !important; aspect-ratio: 9 / 16 !important; z-index: 99990 !important; border-radius: 0 !important; max-width: none !important; margin: 0 !important; background: #000; }
 
         #map { position: absolute; top: 0; left: 0; right: 0; bottom: 0; outline: none; }
         .hud-overlay { position: absolute; pointer-events: none; z-index: 10; text-shadow: 0px 3px 12px rgba(0, 0, 0, 0.9); }
         .ad-space { background-image: repeating-linear-gradient(45deg, #0f172a 25%, transparent 25%, transparent 75%, #0f172a 75%, #0f172a), repeating-linear-gradient(45deg, #0f172a 25%, #020617 25%, #020617 75%, #0f172a 75%, #0f172a); background-size: 20px 20px; }
         ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: #0f172a; } ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
-        .pulse-recording { animation: pulse 1.5s infinite; }
+        
+        @keyframes popIn { 0% { transform: scale(0.5); opacity: 0; } 70% { transform: scale(1.2); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
+        .anim-pop { animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+        
+        @keyframes pulseRec { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+        .pulse-recording { animation: pulseRec 1.5s infinite; }
     </style>
 </head>
 <body class="bg-slate-950 text-slate-100 font-sans min-h-screen flex flex-col overflow-x-hidden">
@@ -113,7 +67,7 @@
                 </div>
                 <div>
                     <h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
-                        GPX 3D Trail Director <span class="bg-orange-500/10 text-orange-400 text-[10px] px-2.5 py-0.5 rounded-full uppercase font-extrabold border border-orange-500/30">STUDIO PRO</span>
+                        GPX 3D Trail Director <span class="bg-orange-500/10 text-orange-400 text-[10px] px-2.5 py-0.5 rounded-full uppercase font-extrabold border border-orange-500/30">V37 SILENT REC</span>
                     </h1>
                 </div>
             </div>
@@ -127,7 +81,6 @@
         <div class="w-full h-[90px] rounded-xl border border-slate-800 flex items-center justify-center ad-space shadow-md relative overflow-hidden group">
             <div class="text-center">
                 <p class="text-xs text-slate-500 uppercase tracking-widest font-bold">Reklamní prostor</p>
-                <p class="text-sm text-slate-400">Zde vložte kód (728x90)</p>
             </div>
         </div>
     </div>
@@ -139,7 +92,6 @@
                 <h2 class="font-bold text-slate-400 mb-2 text-xs uppercase tracking-wider">1. Trasa a Název</h2>
                 
                 <div id="dropzone" class="border-2 border-dashed border-slate-700 hover:border-orange-500 rounded-xl p-6 text-center cursor-pointer transition-all bg-slate-950/50 mb-3 flex flex-col items-center justify-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-slate-500 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
                     <p class="text-xs font-semibold text-slate-300" id="dropzoneText">Klikni nebo přetáhni .GPX</p>
                 </div>
                 
@@ -153,7 +105,7 @@
                 <h2 class="font-bold text-slate-400 mb-2 text-xs uppercase tracking-wider">2. Režie kamery</h2>
                 <div class="flex flex-col gap-3">
                     <button id="btnPlay" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-black py-3 rounded-xl text-sm transition-all flex justify-center items-center gap-2 shadow-lg">
-                        <span id="playIcon">▶</span> <span id="playText">Testovací let (Zde, s menu)</span>
+                        <span id="playIcon">▶</span> <span id="playText">Testovací let (Zde)</span>
                     </button>
                     
                     <div class="grid grid-cols-2 gap-2 mt-1">
@@ -172,6 +124,7 @@
                                 <option value="36">Super rychlost</option>
                             </select>
                         </div>
+
                         <div class="flex flex-col gap-1">
                             <span class="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Vrcholy & Města</span>
                             <button id="togglePois" class="bg-emerald-600 text-white border border-emerald-500 text-[11px] font-bold py-1.5 rounded-lg shadow-md transition-all">Zobrazeno ON</button>
@@ -205,7 +158,7 @@
                     
                     <button id="btnStudioMode" class="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-400 hover:to-red-400 text-white font-black py-4 px-4 rounded-xl transition flex flex-col justify-center items-center text-sm shadow-[0_0_20px_rgba(249,115,22,0.4)]">
                         📺 Přejít do STUDIO MÓDU
-                        <span class="text-[10px] text-white/80 mt-1 font-normal uppercase tracking-wider">Aktivuje plný displej a nahrávání</span>
+                        <span class="text-[10px] text-white/80 mt-1 font-normal uppercase tracking-wider">Aktivuje tiché plnohodnotné nahrávání</span>
                     </button>
                 </div>
             </div>
@@ -240,27 +193,25 @@
                     </div>
                 </div>
                 
-                <div class="hud-overlay top-6 right-6 opacity-40 hidden sm:block">
-                    <span class="text-xs sm:text-sm font-black text-white tracking-widest uppercase">Trail Director <span class="text-orange-500">3D</span></span>
+                <div id="recordCountdownOverlay" class="absolute inset-0 bg-black/80 z-[9999999] flex flex-col items-center justify-center transition-opacity duration-300" style="display:none; opacity:0;">
+                    <p class="text-emerald-500 font-bold tracking-widest uppercase mb-4">Generování videa (Bez potvrzování)</p>
+                    <div id="countdownNumber" class="text-9xl font-black text-white drop-shadow-[0_0_30px_rgba(16,185,129,0.8)]">3</div>
                 </div>
-                
+
                 <div id="studio-controls" class="absolute bottom-8 left-1/2 -translate-x-1/2 bg-slate-900/95 backdrop-blur-md border border-slate-700 p-3 rounded-2xl flex items-center gap-3 z-[999999] shadow-2xl transition-opacity duration-500 w-[90%] sm:w-auto overflow-hidden" style="display:none;">
-                    <div class="absolute -top-6 left-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-black/50 px-2 py-0.5 rounded whitespace-nowrap">
-                        💡 Mezerník = Start | ESC = Zpět
-                    </div>
                     <button id="btnStudioFullscreen" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2.5 rounded-xl text-sm font-bold transition flex items-center gap-2 whitespace-nowrap">
                         ⛶ Fullscreen
                     </button>
                     <div class="w-px h-8 bg-slate-700 mx-1 hidden sm:block"></div>
-                    <button id="btnStudioPlay" class="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition whitespace-nowrap">
-                        ▶ Letět (Bez kamery)
+                    <button id="btnStudioPlay" class="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition whitespace-nowrap">
+                        ▶ Otestovat let
                     </button>
                     <button id="btnStudioRecord" class="bg-red-600 hover:bg-red-500 text-white px-6 py-2.5 rounded-xl text-sm font-bold transition flex items-center gap-2 shadow-[0_0_15px_rgba(220,38,38,0.5)] whitespace-nowrap">
-                        <span id="recordDot" class="w-2.5 h-2.5 bg-white rounded-full inline-block"></span> <span id="recordBtnText">Nahrávat obraz</span>
+                        <span id="recordDot" class="w-2.5 h-2.5 bg-white rounded-full inline-block"></span> <span id="recordBtnText">Nahrát tiché video</span>
                     </button>
                     <div class="w-px h-8 bg-slate-700 mx-1 hidden sm:block"></div>
                     <button id="btnStudioExit" class="text-slate-400 hover:text-white px-3 py-2.5 text-sm font-bold transition whitespace-nowrap">
-                        ✖ Zrušit
+                        ✖ Zpět
                     </button>
                 </div>
 
@@ -272,7 +223,7 @@
         <p class="text-xs text-slate-500 uppercase tracking-widest font-semibold">
             Vytvořil <span class="text-orange-500 font-black">Wondraz</span> © 2026
         </p>
-        <span class="bg-slate-800 text-yellow-500 text-[10px] font-bold px-2 py-0.5 rounded border border-yellow-500/30">VERZE 31 (IG COLUMN FIX)</span>
+        <span class="bg-slate-800 text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded border border-emerald-500/30">PURE CANVAS COMPOSITOR</span>
     </footer>
 
     <input type="file" id="fileInput" accept=".gpx" style="display:none;" />
@@ -288,16 +239,23 @@
         let currentAnimDist = 0; 
         let speedFactor = 16; 
         let animationFrameId = null; 
-        let poisVisible = true;
         let inStudioMode = false;
-        let countdownInterval = null;
+        let poisVisible = true;
+
+        // Globální proměnné pro vykreslování dat do čistého Canvas záznamu
+        let currentExactDist = 0;
+        let currentExactEle = 0;
+        let currentExactEleGain = 0;
 
         let smoothLat = null; let smoothLon = null; let smoothBearing = null; let smoothPitch = 65;
+        
         let mediaRecorder = null; let recordedChunks = []; let isRecording = false;
+        let compRafId = null;
 
         function initMap() {
             map = new maplibregl.Map({
                 container: 'map',
+                preserveDrawingBuffer: true, // EXTRÉMNĚ DŮLEŽITÉ: Povoluje zachytávání WebGL vrstvy do videa bez zčernání
                 style: {
                     version: 8,
                     glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
@@ -332,9 +290,7 @@
 
         function drawHUDProfile() {
             const container = document.getElementById('hud-profile-container');
-            if (!gpxtrackData.length || !document.getElementById('showProfile').checked) {
-                container.style.opacity = '0'; return;
-            }
+            if (!gpxtrackData.length || !document.getElementById('showProfile').checked) { container.style.opacity = '0'; return; }
             container.style.display = 'block'; container.style.opacity = '1';
 
             const canvas = document.getElementById('profileCanvas');
@@ -352,8 +308,7 @@
                 const y = H - ((p.ele - minE) / range) * (H * 0.8) - 10;
                 if(i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
             });
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
-            ctx.lineWidth = 6; ctx.lineJoin = 'round'; ctx.stroke();
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)'; ctx.lineWidth = 6; ctx.lineJoin = 'round'; ctx.stroke();
 
             const activeData = gpxtrackData.slice(0, Math.floor(currentIdx) + 1);
             if (activeData.length > 0) {
@@ -363,15 +318,13 @@
                     const y = H - ((p.ele - minE) / range) * (H * 0.8) - 10;
                     if(i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
                 });
-                ctx.strokeStyle = 'rgba(249, 115, 22, 0.9)';
-                ctx.lineWidth = 6; ctx.stroke();
+                ctx.strokeStyle = 'rgba(249, 115, 22, 0.9)'; ctx.lineWidth = 6; ctx.stroke();
 
                 const last = activeData[activeData.length - 1];
                 const dx = (last.dist / totalTrackDistance) * W;
                 const dy = H - ((last.ele - minE) / range) * (H * 0.8) - 10;
                 
-                ctx.beginPath();
-                ctx.arc(dx, dy, 12, 0, Math.PI*2);
+                ctx.beginPath(); ctx.arc(dx, dy, 12, 0, Math.PI*2);
                 ctx.fillStyle = '#ffffff'; ctx.fill();
                 ctx.lineWidth = 4; ctx.strokeStyle = '#c2410c'; ctx.stroke();
             }
@@ -437,8 +390,7 @@
                 map.jumpTo({ center: [gpxtrackData[0].lon, gpxtrackData[0].lat], zoom: 12, pitch: 30, bearing: 0 });
                 await new Promise(r => setTimeout(r, 400));
                 
-                // SKRYTÍ MENU: Dokonalé zmizení ovládacího panelu ve Studiu
-                if (inStudioMode) {
+                if (inStudioMode && !isRecording) {
                     document.getElementById('studio-controls').style.opacity = '0';
                     document.getElementById('studio-controls').style.pointerEvents = 'none';
                 }
@@ -448,10 +400,7 @@
             }
 
             isPlaying = true; updatePlayUI();
-            
-            if(!animationFrameId) {
-                animationFrameId = requestAnimationFrame(gameLoop);
-            }
+            if(!animationFrameId) animationFrameId = requestAnimationFrame(gameLoop);
         }
 
         function gameLoop() {
@@ -475,26 +424,29 @@
             }
 
             const fraction = currentIdx % 1, pt = gpxtrackData[Math.floor(currentIdx)], nextPt = gpxtrackData[Math.floor(currentIdx) + 1];
-            const exactLat = pt.lat + (nextPt.lat - pt.lat) * fraction;
-            const exactLon = pt.lon + (nextPt.lon - pt.lon) * fraction;
-            const exactDist = pt.dist + (nextPt.dist - pt.dist) * fraction;
-            const exactEleGain = pt.eleGain + (nextPt.eleGain - pt.eleGain) * fraction;
-            const exactEle = pt.ele + (nextPt.ele - pt.ele) * fraction;
+            currentExactLat = pt.lat + (nextPt.lat - pt.lat) * fraction;
+            currentExactLon = pt.lon + (nextPt.lon - pt.lon) * fraction;
+            
+            // Uložení do globálních proměnných pro Canvas Composer nahrávání
+            currentExactDist = pt.dist + (nextPt.dist - pt.dist) * fraction;
+            currentExactEleGain = pt.eleGain + (nextPt.eleGain - pt.eleGain) * fraction;
+            currentExactEle = pt.ele + (nextPt.ele - pt.ele) * fraction;
 
-            document.getElementById('hudDist').innerHTML = exactDist.toFixed(1) + '<span class="text-2xl text-slate-300 ml-1">km</span>';
-            document.getElementById('hudEle').innerHTML = Math.round(exactEle) + '<span class="text-2xl text-slate-300 ml-1">m</span>';
-            document.getElementById('eleGainVal').innerText = Math.round(exactEleGain) + " m";
+            // HTML Vykreslování
+            document.getElementById('hudDist').innerHTML = currentExactDist.toFixed(1) + '<span class="text-2xl text-slate-300 ml-1">km</span>';
+            document.getElementById('hudEle').innerHTML = Math.round(currentExactEle) + '<span class="text-2xl text-slate-300 ml-1">m</span>';
+            document.getElementById('eleGainVal').innerText = Math.round(currentExactEleGain) + " m";
 
             drawHUDProfile();
 
-            let lineProgress = Math.max(0.0001, Math.min(1, exactDist / totalTrackDistance));
+            let lineProgress = Math.max(0.0001, Math.min(1, currentExactDist / totalTrackDistance));
             map.setPaintProperty('route-glow', 'line-gradient', ['step', ['line-progress'], '#ef4444', lineProgress, 'rgba(0,0,0,0)']);
             map.setPaintProperty('route-line', 'line-gradient', ['step', ['line-progress'], '#f97316', lineProgress, 'rgba(0,0,0,0)']);
 
             let lookAheadIdx = Math.min(Math.floor(currentIdx) + speedFactor * 3, gpxtrackData.length - 1);
-            let targetBearing = getBearing(exactLat, exactLon, gpxtrackData[lookAheadIdx].lat, gpxtrackData[lookAheadIdx].lon);
+            let targetBearing = getBearing(currentExactLat, currentExactLon, gpxtrackData[lookAheadIdx].lat, gpxtrackData[lookAheadIdx].lon);
 
-            smoothLat += (exactLat - smoothLat) * 0.08; smoothLon += (exactLon - smoothLon) * 0.08;
+            smoothLat += (currentExactLat - smoothLat) * 0.08; smoothLon += (currentExactLon - smoothLon) * 0.08;
             let diff = targetBearing - smoothBearing; while (diff < -180) diff += 360; while (diff > 180) diff -= 360;
             smoothBearing += diff * 0.04; smoothPitch += (65 - smoothPitch) * 0.08;
 
@@ -513,25 +465,21 @@
             const btnPlayText = document.getElementById('playText');
             if(btnPlayIcon && btnPlayText) {
                 btnPlayIcon.innerText = isPlaying ? "⏸" : "▶";
-                btnPlayText.innerText = isPlaying ? "Pozastavit let" : "Testovací let (Zde, s menu)";
+                btnPlayText.innerText = isPlaying ? "Pozastavit let" : "Testovací let (Zde)";
             }
 
             const btnStudioPlay = document.getElementById('btnStudioPlay');
             if(btnStudioPlay) {
                 if(isPlaying) {
                     btnStudioPlay.innerText = "⏸ Pauza";
-                    btnStudioPlay.classList.replace('bg-emerald-600', 'bg-amber-600');
-                    
-                    // Schováme panel pokud letíme
-                    if (inStudioMode) {
+                    btnStudioPlay.classList.replace('bg-blue-600', 'bg-amber-600');
+                    if (inStudioMode && !isRecording) {
                         document.getElementById('studio-controls').style.opacity = '0';
                         document.getElementById('studio-controls').style.pointerEvents = 'none';
                     }
                 } else {
-                    btnStudioPlay.innerText = "▶ Letět (Bez záznamu)";
-                    btnStudioPlay.classList.replace('bg-amber-600', 'bg-emerald-600');
-                    
-                    // Zobrazíme panel pokud stojíme
+                    btnStudioPlay.innerText = "▶ Otestovat let";
+                    btnStudioPlay.classList.replace('bg-amber-600', 'bg-blue-600');
                     if (inStudioMode) {
                         document.getElementById('studio-controls').style.opacity = '1';
                         document.getElementById('studio-controls').style.pointerEvents = 'auto';
@@ -556,14 +504,12 @@
             stopFlyover();
             if(isRecording) stopStudioRecording();
             if (document.fullscreenElement) document.exitFullscreen();
-            if(countdownInterval) clearTimeout(countdownInterval);
 
             document.body.classList.remove('studio-mode-active');
             document.getElementById('studio-controls').style.display = 'none';
             map.resize();
         }
 
-        // KLÁVESOVÉ ZKRATKY
         window.addEventListener('keydown', (e) => {
             if (e.code === 'Space') {
                 if(e.target === document.body || inStudioMode) e.preventDefault();
@@ -576,6 +522,10 @@
             }
         });
 
+        // -------------------------------------------------------------
+        // Cesta 1: PURE CANVAS SILENT RECORDER
+        // Žádné otravné sdílení obrazovky. Kreslí mapu i texty tiše na pozadí.
+        // -------------------------------------------------------------
         async function startStudioRecording() {
             if (isRecording) { stopStudioRecording(); return; }
             
@@ -584,27 +534,143 @@
                 if (MediaRecorder.isTypeSupported('video/mp4;codecs=avc1')) { videoMimeType = 'video/mp4;codecs=avc1'; videoExt = 'mp4'; } 
                 else if (MediaRecorder.isTypeSupported('video/mp4')) { videoMimeType = 'video/mp4'; videoExt = 'mp4'; } 
 
-                const stream = await navigator.mediaDevices.getDisplayMedia({ video: { displaySurface: "browser", width: 1920, height: 1080, frameRate: 60 }, audio: false, preferCurrentTab: true });
-                recordedChunks = []; isRecording = true;
-
-                const btnRec = document.getElementById('btnStudioRecord');
-                const btnText = document.getElementById('recordBtnText');
-                const recordDot = document.getElementById('recordDot');
-                
-                // OKAMŽITÉ SKRYTÍ MENU: Hned po výběru karty se schová, aby nezaclánělo
                 document.getElementById('studio-controls').style.opacity = '0';
                 document.getElementById('studio-controls').style.pointerEvents = 'none';
+                
+                // SKRYTÍ HTML HUDU VE STUDIU ABY NERUŠIL
+                document.getElementById('hud-title').style.display = 'none';
+                document.getElementById('hud-profile-container').style.opacity = '0';
+                document.getElementById('hud-stats').style.display = 'none';
 
-                mediaRecorder = new MediaRecorder(stream, { mimeType: videoMimeType, videoBitsPerSecond: 14000000 });
+                const isIG = document.body.classList.contains('format-ig');
+                const finalW = isIG ? 1080 : 1920;
+                const finalH = isIG ? 1920 : 1080;
+
+                const compCanvas = document.createElement('canvas');
+                compCanvas.width = finalW;
+                compCanvas.height = finalH;
+                const ctx = compCanvas.getContext('2d');
+
+                const mapCanvas = map.getCanvas();
+                const profCanvas = document.getElementById('profileCanvas');
+                
+                isRecording = true;
+                
+                function drawCanvasFrame() {
+                    if (!isRecording) return;
+                    
+                    ctx.fillStyle = '#000';
+                    ctx.fillRect(0, 0, finalW, finalH);
+
+                    // 1. Zkopírování 3D mapy z MapLibre
+                    const mw = mapCanvas.width;
+                    const mh = mapCanvas.height;
+                    if (mw > 0 && mh > 0) {
+                        const scale = Math.max(finalW / mw, finalH / mh);
+                        const drawW = mw * scale;
+                        const drawH = mh * scale;
+                        const drawX = (finalW - drawW) / 2;
+                        const drawY = (finalH - drawH) / 2;
+                        ctx.drawImage(mapCanvas, drawX, drawY, drawW, drawH);
+                    }
+
+                    // 2. Vykreslení Výškového profilu
+                    if (document.getElementById('showProfile').checked && gpxtrackData.length > 0) {
+                        const pW = profCanvas.width;
+                        const pH = profCanvas.height;
+                        const targetW = isIG ? finalW - 120 : finalW - 160;
+                        const scaleP = targetW / pW;
+                        const drawH = pH * scaleP;
+                        ctx.drawImage(profCanvas, (finalW - targetW)/2, finalH - drawH - (isIG ? 200 : 150), targetW, drawH);
+                    }
+
+                    // 3. Vykreslení Textů (Název trasy, Vzdálenost, Výška)
+                    ctx.save();
+                    ctx.shadowColor = 'rgba(0,0,0,0.9)';
+                    ctx.shadowBlur = 15;
+                    ctx.shadowOffsetY = 5;
+                    
+                    const routeName = document.getElementById('customRouteName').value.trim().toUpperCase();
+                    if (routeName) {
+                        ctx.fillStyle = 'white';
+                        ctx.font = "900 " + (isIG ? "55px" : "75px") + " sans-serif";
+                        ctx.textAlign = isIG ? "center" : "left";
+                        const tX = isIG ? finalW/2 : 60;
+                        const tY = isIG ? 120 : 80;
+                        ctx.fillText(routeName, tX, tY);
+                        
+                        ctx.fillStyle = '#f97316'; // Orange-500
+                        ctx.shadowBlur = 0;
+                        const lineW = isIG ? 100 : 150;
+                        if (isIG) ctx.fillRect(tX - lineW/2, tY + 25, lineW, 8);
+                        else ctx.fillRect(tX, tY + 25, lineW, 8);
+                    }
+
+                    if (document.getElementById('showEleGain').checked && gpxtrackData.length > 0) {
+                        ctx.fillStyle = '#fb923c';
+                        ctx.font = "bold " + (isIG ? "26px" : "30px") + " sans-serif";
+                        ctx.shadowBlur = 8;
+                        ctx.textAlign = isIG ? "center" : "left";
+                        ctx.fillText("NASTOUPÁNO: " + Math.round(currentExactEleGain) + " M", isIG ? finalW/2 : 60, isIG ? 190 : 150);
+                    }
+                    
+                    if (gpxtrackData.length > 0) {
+                        ctx.textAlign = isIG ? "center" : "left";
+                        const sY = finalH - 70;
+                        
+                        if (isIG) {
+                            ctx.fillStyle = '#fb923c'; ctx.font = "bold 24px sans-serif"; ctx.fillText("UJETO", finalW/2 - 180, sY - 60);
+                            ctx.fillStyle = 'white'; ctx.font = "900 70px sans-serif";
+                            const dText = currentExactDist.toFixed(1); ctx.fillText(dText, finalW/2 - 180, sY);
+                            const dW = ctx.measureText(dText).width;
+                            ctx.fillStyle = '#cbd5e1'; ctx.font = "bold 35px sans-serif"; ctx.fillText("km", finalW/2 - 180 + dW/2 + 30, sY);
+                            
+                            ctx.fillStyle = '#fb923c'; ctx.font = "bold 24px sans-serif"; ctx.fillText("VÝŠKA", finalW/2 + 180, sY - 60);
+                            ctx.fillStyle = 'white'; ctx.font = "900 70px sans-serif";
+                            const eText = Math.round(currentExactEle).toString(); ctx.fillText(eText, finalW/2 + 180, sY);
+                            const eW = ctx.measureText(eText).width;
+                            ctx.fillStyle = '#cbd5e1'; ctx.font = "bold 35px sans-serif"; ctx.fillText("m", finalW/2 + 180 + eW/2 + 25, sY);
+                        } else {
+                            ctx.fillStyle = '#fb923c'; ctx.font = "bold 24px sans-serif"; ctx.fillText("UJETA VZDÁLENOST", 60, sY - 60);
+                            ctx.fillStyle = 'white'; ctx.font = "900 70px sans-serif";
+                            const dText = currentExactDist.toFixed(1); ctx.fillText(dText, 60, sY);
+                            const dW = ctx.measureText(dText).width;
+                            ctx.fillStyle = '#cbd5e1'; ctx.font = "bold 35px sans-serif"; ctx.fillText("km", 60 + dW + 10, sY);
+                            
+                            ctx.fillStyle = '#fb923c'; ctx.font = "bold 24px sans-serif"; ctx.fillText("NADM. VÝŠKA", 450, sY - 60);
+                            ctx.fillStyle = 'white'; ctx.font = "900 70px sans-serif";
+                            const eText = Math.round(currentExactEle).toString(); ctx.fillText(eText, 450, sY);
+                            const eW = ctx.measureText(eText).width;
+                            ctx.fillStyle = '#cbd5e1'; ctx.font = "bold 35px sans-serif"; ctx.fillText("m", 450 + eW + 10, sY);
+                        }
+                    }
+                    ctx.restore();
+                    
+                    compRafId = requestAnimationFrame(drawCanvasFrame);
+                }
+                
+                drawCanvasFrame();
+
+                const canvasStream = compCanvas.captureStream(60);
+                recordedChunks = [];
+
+                mediaRecorder = new MediaRecorder(canvasStream, { mimeType: videoMimeType, videoBitsPerSecond: 16000000 });
                 mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); };
                 
                 mediaRecorder.onstop = () => {
                     isRecording = false;
-                    if(countdownInterval) clearTimeout(countdownInterval);
                     
+                    const btnRec = document.getElementById('btnStudioRecord');
+                    const btnText = document.getElementById('recordBtnText');
+                    const recordDot = document.getElementById('recordDot');
                     btnRec.classList.replace('bg-slate-800', 'bg-red-600');
-                    btnText.innerText = "Nahrávat obraz";
+                    btnText.innerText = "Nahrát tiché video";
                     recordDot.classList.remove('pulse-recording');
+                    
+                    // NAVRÁCENÍ HTML HUDU
+                    document.getElementById('hud-title').style.display = 'block';
+                    document.getElementById('hud-profile-container').style.opacity = '1';
+                    document.getElementById('hud-stats').style.display = 'flex';
                     
                     document.getElementById('studio-controls').style.opacity = '1';
                     document.getElementById('studio-controls').style.pointerEvents = 'auto';
@@ -618,25 +684,35 @@
                     
                     document.body.appendChild(a); a.click();
                     setTimeout(() => { document.body.removeChild(a); window.URL.revokeObjectURL(url); }, 100);
-                    stream.getTracks().forEach(track => track.stop());
-                };
-
-                // Zajištění stopu pokud uživatel klikne na nativní lištu prohlížeče "Zastavit sdílení"
-                stream.getVideoTracks()[0].onended = () => {
-                    if (isRecording) stopStudioRecording();
+                    
+                    canvasStream.getTracks().forEach(track => track.stop());
+                    if (compRafId) cancelAnimationFrame(compRafId);
                 };
 
                 mediaRecorder.start();
+                
+                const overlay = document.getElementById('recordCountdownOverlay');
+                const num = document.getElementById('countdownNumber');
+                overlay.style.display = 'flex'; overlay.offsetHeight; overlay.style.opacity = '1';
 
-                // 6 VTEŘIN ČISTÁ PRODLEVA (Nahrává se jen čistá statická obrazovka bez menu)
-                countdownInterval = setTimeout(() => {
-                    if (isRecording) {
-                        cinematicStart();
+                let count = 3; num.innerText = count;
+                num.classList.remove('anim-pop'); void num.offsetWidth; num.classList.add('anim-pop');
+
+                const countInt = setInterval(() => {
+                    count--;
+                    if(count > 0) {
+                        num.innerText = count; num.classList.remove('anim-pop'); void num.offsetWidth; num.classList.add('anim-pop');
+                    } else if (count === 0) {
+                        num.innerText = "AKCE!"; num.classList.remove('anim-pop'); void num.offsetWidth; num.classList.add('anim-pop'); num.classList.add('text-white');
+                    } else {
+                        clearInterval(countInt); overlay.style.opacity = '0';
+                        setTimeout(() => { overlay.style.display = 'none'; num.classList.remove('text-white'); }, 300);
+                        if (isRecording) cinematicStart();
                     }
-                }, 6000);
+                }, 1000);
 
             } catch(e) {
-                console.log("Nahrávání zrušeno", e);
+                console.log("Nahrávání zrušeno nebo bezpečnostní chyba Canvasu", e);
                 document.getElementById('studio-controls').style.opacity = '1';
                 document.getElementById('studio-controls').style.pointerEvents = 'auto';
             }
@@ -644,6 +720,7 @@
 
         function stopStudioRecording() {
             if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+            if (compRafId) cancelAnimationFrame(compRafId);
         }
 
         function safeParseGPX(xmlText, fileName) {
@@ -693,6 +770,7 @@
             gpxtrackData = pts; totalTrackDistance = dist;
             
             currentIdx = 0; currentAnimDist = 0;
+            currentExactDist = 0; currentExactEle = pts[0].ele; currentExactEleGain = 0;
             stopFlyover();
 
             document.getElementById('routeNameHud').innerText = routeName;
@@ -816,7 +894,6 @@
 
             document.getElementById('speedSelector').addEventListener('change', (e) => speedFactor = parseInt(e.target.value));
             
-            // PŘEPÍNAČ FORMÁTU (16:9 vs 9:16 IG)
             document.getElementById('formatSelector').addEventListener('change', (e) => {
                 if (e.target.value === '9-16') {
                     document.body.classList.add('format-ig');
