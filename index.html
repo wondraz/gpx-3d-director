@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GPX 3D Trail Director V41 - Route Line Fix</title>
+    <title>GPX 3D Trail Director V42 - Apple M1 Hardware Sync</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/maplibre-gl@4.3.2/dist/maplibre-gl.js"></script>
@@ -67,7 +67,7 @@
                 </div>
                 <div>
                     <h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
-                        GPX 3D Trail Director <span class="bg-orange-500/10 text-orange-400 text-[10px] px-2.5 py-0.5 rounded-full uppercase font-extrabold border border-orange-500/30">V41 PRO</span>
+                        GPX 3D Trail Director <span class="bg-orange-500/10 text-orange-400 text-[10px] px-2.5 py-0.5 rounded-full uppercase font-extrabold border border-orange-500/30">V42 M1 SYNC</span>
                     </h1>
                 </div>
             </div>
@@ -208,7 +208,7 @@
                 </div>
                 
                 <div id="recordCountdownOverlay" class="absolute inset-0 bg-black/80 z-[9999999] flex flex-col items-center justify-center transition-opacity duration-300" style="display:none; opacity:0;">
-                    <p class="text-emerald-500 font-bold tracking-widest uppercase mb-4">Generování videa (Optimalizováno pro výkon)</p>
+                    <p class="text-emerald-500 font-bold tracking-widest uppercase mb-4">Hardwarová příprava grafiky (Apple HW Sync)</p>
                     <div id="countdownNumber" class="text-9xl font-black text-white drop-shadow-[0_0_30px_rgba(16,185,129,0.8)]">3</div>
                 </div>
 
@@ -224,7 +224,7 @@
                         ▶ Otestovat let
                     </button>
                     <button id="btnStudioRecord" class="bg-red-600 hover:bg-red-500 text-white px-6 py-2.5 rounded-xl text-sm font-bold transition flex items-center gap-2 shadow-[0_0_15px_rgba(220,38,38,0.5)] whitespace-nowrap">
-                        <span id="recordDot" class="w-2.5 h-2.5 bg-white rounded-full inline-block"></span> <span id="recordBtnText">Nahrát tiché video</span>
+                        <span id="recordDot" class="w-2.5 h-2.5 bg-white rounded-full inline-block"></span> <span id="recordBtnText">Nahrát video (.mp4)</span>
                     </button>
                     <div class="w-px h-8 bg-slate-700 mx-1 hidden sm:block"></div>
                     <button id="btnStudioExit" class="text-slate-400 hover:text-white px-3 py-2.5 text-sm font-bold transition whitespace-nowrap">
@@ -240,7 +240,7 @@
         <p class="text-xs text-slate-500 uppercase tracking-widest font-semibold">
             Vytvořil <span class="text-orange-500 font-black">Wondraz</span> © 2026
         </p>
-        <span class="bg-slate-800 text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded border border-emerald-500/30">V41: ROUTE LINE FIX</span>
+        <span class="bg-slate-800 text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded border border-emerald-500/30">V42: APPLE M1 HW SYNC</span>
     </footer>
 
     <input type="file" id="fileInput" accept=".gpx" style="display:none;" />
@@ -267,7 +267,14 @@
         let smoothLat = null; let smoothLon = null; let smoothBearing = null; let smoothPitch = 65;
         
         let mediaRecorder = null; let recordedChunks = []; let isRecording = false;
-        let compIntervalId = null;
+        
+        // Globální objekty pro nový HW Canvas render
+        let compCanvas = null;
+        let compCtx = null;
+        let compFinalW = 1920;
+        let compFinalH = 1080;
+        let compIsIG = false;
+        let lastRecFrameTime = 0;
 
         function initMap() {
             map = new maplibregl.Map({
@@ -290,6 +297,130 @@
                 center: [15.732, 50.729], zoom: 12, pitch: 65, bearing: 0
             });
             map.setMaxPitch(75);
+
+            // ÚPLNÁ SYNCHRONIZACE: Kreslíme do videa jen ve chvíli, kdy grafická karta (WebGL) ohlásí hotový nový snímek
+            map.on('render', () => {
+                if (!isRecording || !compCtx) return;
+                const now = performance.now();
+                // Omezovač na 30 FPS pro stabilní datový tok videa
+                if (now - lastRecFrameTime >= 33.33) {
+                    drawCanvasFrame();
+                    lastRecFrameTime = now;
+                }
+            });
+        }
+
+        // FUNKCE VYKRESLUJÍCÍ 1 SNÍMEK VIDEA (Pouze v paměti procesoru)
+        function drawCanvasFrame() {
+            if (!compCtx) return;
+
+            compCtx.fillStyle = '#000';
+            compCtx.fillRect(0, 0, compFinalW, compFinalH);
+
+            const mapCanvas = map.getCanvas();
+            const mw = mapCanvas.width;
+            const mh = mapCanvas.height;
+            if (mw > 0 && mh > 0) {
+                const scale = Math.max(compFinalW / mw, compFinalH / mh);
+                const drawW = mw * scale;
+                const drawH = mh * scale;
+                const drawX = (compFinalW - drawW) / 2;
+                const drawY = (compFinalH - drawH) / 2;
+                compCtx.drawImage(mapCanvas, drawX, drawY, drawW, drawH);
+            }
+
+            const profCanvas = document.getElementById('profileCanvas');
+            if (document.getElementById('showProfile').checked && gpxtrackData.length > 0) {
+                const pW = profCanvas.width;
+                const pH = profCanvas.height;
+                const targetW = compIsIG ? compFinalW - 120 : compFinalW - 160;
+                const scaleP = targetW / pW;
+                const drawH = pH * scaleP;
+                compCtx.drawImage(profCanvas, (compFinalW - targetW)/2, compFinalH - drawH - (compIsIG ? 200 : 150), targetW, drawH);
+            }
+
+            compCtx.lineJoin = "round";
+            compCtx.lineWidth = 6;
+            compCtx.strokeStyle = "rgba(0, 0, 0, 0.85)";
+            
+            function drawText(text, x, y) {
+                compCtx.strokeText(text, x, y);
+                compCtx.fillText(text, x, y);
+            }
+
+            const routeName = document.getElementById('customRouteName').value.trim().toUpperCase();
+            if (routeName) {
+                compCtx.font = "900 " + (compIsIG ? "55px" : "75px") + " sans-serif";
+                compCtx.textAlign = compIsIG ? "center" : "left";
+                const tX = compIsIG ? compFinalW/2 : 60;
+                const tY = compIsIG ? 120 : 80;
+                
+                compCtx.fillStyle = 'white';
+                drawText(routeName, tX, tY);
+                
+                compCtx.fillStyle = '#f97316';
+                const lineW = compIsIG ? 100 : 150;
+                if (compIsIG) compCtx.fillRect(tX - lineW/2, tY + 25, lineW, 8);
+                else compCtx.fillRect(tX, tY + 25, lineW, 8);
+            }
+
+            if (document.getElementById('showEleGain').checked && gpxtrackData.length > 0) {
+                compCtx.font = "bold " + (compIsIG ? "26px" : "30px") + " sans-serif";
+                compCtx.textAlign = compIsIG ? "center" : "left";
+                compCtx.fillStyle = '#fb923c';
+                drawText("NASTOUPÁNO: " + Math.round(currentExactEleGain) + " M", compIsIG ? compFinalW/2 : 60, compIsIG ? 190 : 150);
+            }
+            
+            if (gpxtrackData.length > 0) {
+                compCtx.textAlign = compIsIG ? "center" : "left";
+                const sY = compFinalH - 70;
+                
+                if (compIsIG) {
+                    compCtx.font = "bold 24px sans-serif"; compCtx.fillStyle = '#fb923c'; 
+                    drawText("UJETO", compFinalW/2 - 180, sY - 60);
+                    
+                    compCtx.font = "900 70px sans-serif"; compCtx.fillStyle = 'white';
+                    const dText = currentExactDist.toFixed(1); 
+                    drawText(dText, compFinalW/2 - 180, sY);
+                    
+                    const dW = compCtx.measureText(dText).width;
+                    compCtx.font = "bold 35px sans-serif"; compCtx.fillStyle = '#cbd5e1'; 
+                    drawText("km", compFinalW/2 - 180 + dW/2 + 30, sY);
+                    
+                    compCtx.font = "bold 24px sans-serif"; compCtx.fillStyle = '#fb923c'; 
+                    drawText("VÝŠKA", compFinalW/2 + 180, sY - 60);
+                    
+                    compCtx.font = "900 70px sans-serif"; compCtx.fillStyle = 'white';
+                    const eText = Math.round(currentExactEle).toString(); 
+                    drawText(eText, compFinalW/2 + 180, sY);
+                    
+                    const eW = compCtx.measureText(eText).width;
+                    compCtx.font = "bold 35px sans-serif"; compCtx.fillStyle = '#cbd5e1'; 
+                    drawText("m", compFinalW/2 + 180 + eW/2 + 25, sY);
+                } else {
+                    compCtx.font = "bold 24px sans-serif"; compCtx.fillStyle = '#fb923c'; 
+                    drawText("UJETA VZDÁLENOST", 60, sY - 60);
+                    
+                    compCtx.font = "900 70px sans-serif"; compCtx.fillStyle = 'white';
+                    const dText = currentExactDist.toFixed(1); 
+                    drawText(dText, 60, sY);
+                    
+                    const dW = compCtx.measureText(dText).width;
+                    compCtx.font = "bold 35px sans-serif"; compCtx.fillStyle = '#cbd5e1'; 
+                    drawText("km", 60 + dW + 10, sY);
+                    
+                    compCtx.font = "bold 24px sans-serif"; compCtx.fillStyle = '#fb923c'; 
+                    drawText("NADM. VÝŠKA", 450, sY - 60);
+                    
+                    compCtx.font = "900 70px sans-serif"; compCtx.fillStyle = 'white';
+                    const eText = Math.round(currentExactEle).toString(); 
+                    drawText(eText, 450, sY);
+                    
+                    const eW = compCtx.measureText(eText).width;
+                    compCtx.font = "bold 35px sans-serif"; compCtx.fillStyle = '#cbd5e1'; 
+                    drawText("m", 450 + eW + 10, sY);
+                }
+            }
         }
 
         function getBearing(lat1, lon1, lat2, lon2) {
@@ -398,7 +529,6 @@
             });
         }
 
-        // OPRAVA: BEZPEČNÝ RESET BEZ CHYBY S VRSTVAMI
         function resetFlyover() {
             stopFlyover();
             currentIdx = 0;
@@ -423,7 +553,6 @@
                 document.getElementById('hudEle').innerHTML = Math.round(currentExactEle) + '<span class="text-2xl text-slate-300 ml-1">m</span>';
                 document.getElementById('eleGainVal').innerText = "0 m";
                 
-                // Zkontrolujeme, zda vrstva existuje před zásahem do stylu
                 if (map.getLayer('route-glow')) {
                     map.setPaintProperty('route-glow', 'line-gradient', ['step', ['line-progress'], '#ef4444', 0.0001, 'rgba(0,0,0,0)']);
                     map.setPaintProperty('route-line', 'line-gradient', ['step', ['line-progress'], '#f97316', 0.0001, 'rgba(0,0,0,0)']);
@@ -519,7 +648,9 @@
             let diff = targetBearing - smoothBearing; while (diff < -180) diff += 360; while (diff > 180) diff -= 360;
             smoothBearing += diff * 0.04; smoothPitch += (tPitch - smoothPitch) * 0.05;
 
+            // Zde "jumpTo" donutí MapLibre vykreslit nový snímek, což následně odpálí událost 'render' a naše kopírování canvasu
             map.jumpTo({ center: [smoothLon, smoothLat], bearing: smoothBearing, pitch: smoothPitch, zoom: tPitch > 65 ? 15.5 : 14.5 });
+            
             animationFrameId = requestAnimationFrame(gameLoop);
         }
 
@@ -597,9 +728,24 @@
             resetFlyover();
 
             try {
-                let videoMimeType = 'video/webm;codecs=vp9'; let videoExt = 'webm';
-                if (MediaRecorder.isTypeSupported('video/mp4;codecs=avc1')) { videoMimeType = 'video/mp4;codecs=avc1'; videoExt = 'mp4'; } 
-                else if (MediaRecorder.isTypeSupported('video/mp4')) { videoMimeType = 'video/mp4'; videoExt = 'mp4'; } 
+                // EXTRÉMNĚ DŮLEŽITÉ: Přepsaný výběr kodeku pro vynucení hardwarové akcelerace M1 procesorů (H.264 / AVC)
+                let videoMimeType = ''; 
+                let videoExt = '';
+                const availableCodecs = [
+                    { mime: 'video/mp4;codecs=avc1', ext: 'mp4' }, // Apple M1 HW encoder 
+                    { mime: 'video/mp4', ext: 'mp4' }, 
+                    { mime: 'video/webm;codecs=h264', ext: 'webm' }, // H.264 wrapper
+                    { mime: 'video/webm;codecs=vp8', ext: 'webm' }, // VP8 se v softwaru kóduje mnohem lépe než VP9
+                    { mime: 'video/webm', ext: 'webm' }
+                ];
+                
+                for (let c of availableCodecs) {
+                    if (MediaRecorder.isTypeSupported(c.mime)) {
+                        videoMimeType = c.mime;
+                        videoExt = c.ext;
+                        break;
+                    }
+                }
 
                 document.getElementById('studio-controls').style.opacity = '0';
                 document.getElementById('studio-controls').style.pointerEvents = 'none';
@@ -608,127 +754,14 @@
                 document.getElementById('hud-profile-container').style.opacity = '0';
                 document.getElementById('hud-stats').style.display = 'none';
 
-                const isIG = document.body.classList.contains('format-ig');
-                const finalW = isIG ? 1080 : 1920;
-                const finalH = isIG ? 1920 : 1080;
+                compIsIG = document.body.classList.contains('format-ig');
+                compFinalW = compIsIG ? 1080 : 1920;
+                compFinalH = compIsIG ? 1920 : 1080;
 
-                const compCanvas = document.createElement('canvas');
-                compCanvas.width = finalW;
-                compCanvas.height = finalH;
-                const ctx = compCanvas.getContext('2d');
-
-                const mapCanvas = map.getCanvas();
-                const profCanvas = document.getElementById('profileCanvas');
-                
-                function drawTextWithOutline(text, x, y) {
-                    ctx.strokeText(text, x, y);
-                    ctx.fillText(text, x, y);
-                }
-                
-                function drawCanvasFrame() {
-                    if (!isRecording) return;
-                    
-                    ctx.fillStyle = '#000';
-                    ctx.fillRect(0, 0, finalW, finalH);
-
-                    const mw = mapCanvas.width;
-                    const mh = mapCanvas.height;
-                    if (mw > 0 && mh > 0) {
-                        const scale = Math.max(finalW / mw, finalH / mh);
-                        const drawW = mw * scale;
-                        const drawH = mh * scale;
-                        const drawX = (finalW - drawW) / 2;
-                        const drawY = (finalH - drawH) / 2;
-                        ctx.drawImage(mapCanvas, drawX, drawY, drawW, drawH);
-                    }
-
-                    if (document.getElementById('showProfile').checked && gpxtrackData.length > 0) {
-                        const pW = profCanvas.width;
-                        const pH = profCanvas.height;
-                        const targetW = isIG ? finalW - 120 : finalW - 160;
-                        const scaleP = targetW / pW;
-                        const drawH = pH * scaleP;
-                        ctx.drawImage(profCanvas, (finalW - targetW)/2, finalH - drawH - (isIG ? 200 : 150), targetW, drawH);
-                    }
-
-                    ctx.lineJoin = "round";
-                    ctx.lineWidth = 6;
-                    ctx.strokeStyle = "rgba(0, 0, 0, 0.85)";
-                    
-                    const routeName = document.getElementById('customRouteName').value.trim().toUpperCase();
-                    if (routeName) {
-                        ctx.font = "900 " + (isIG ? "55px" : "75px") + " sans-serif";
-                        ctx.textAlign = isIG ? "center" : "left";
-                        const tX = isIG ? finalW/2 : 60;
-                        const tY = isIG ? 120 : 80;
-                        
-                        ctx.fillStyle = 'white';
-                        drawTextWithOutline(routeName, tX, tY);
-                        
-                        ctx.fillStyle = '#f97316';
-                        const lineW = isIG ? 100 : 150;
-                        if (isIG) ctx.fillRect(tX - lineW/2, tY + 25, lineW, 8);
-                        else ctx.fillRect(tX, tY + 25, lineW, 8);
-                    }
-
-                    if (document.getElementById('showEleGain').checked && gpxtrackData.length > 0) {
-                        ctx.font = "bold " + (isIG ? "26px" : "30px") + " sans-serif";
-                        ctx.textAlign = isIG ? "center" : "left";
-                        ctx.fillStyle = '#fb923c';
-                        drawTextWithOutline("NASTOUPÁNO: " + Math.round(currentExactEleGain) + " M", isIG ? finalW/2 : 60, isIG ? 190 : 150);
-                    }
-                    
-                    if (gpxtrackData.length > 0) {
-                        ctx.textAlign = isIG ? "center" : "left";
-                        const sY = finalH - 70;
-                        
-                        if (isIG) {
-                            ctx.font = "bold 24px sans-serif"; ctx.fillStyle = '#fb923c'; 
-                            drawTextWithOutline("UJETO", finalW/2 - 180, sY - 60);
-                            
-                            ctx.font = "900 70px sans-serif"; ctx.fillStyle = 'white';
-                            const dText = currentExactDist.toFixed(1); 
-                            drawTextWithOutline(dText, finalW/2 - 180, sY);
-                            
-                            const dW = ctx.measureText(dText).width;
-                            ctx.font = "bold 35px sans-serif"; ctx.fillStyle = '#cbd5e1'; 
-                            drawTextWithOutline("km", finalW/2 - 180 + dW/2 + 30, sY);
-                            
-                            ctx.font = "bold 24px sans-serif"; ctx.fillStyle = '#fb923c'; 
-                            drawTextWithOutline("VÝŠKA", finalW/2 + 180, sY - 60);
-                            
-                            ctx.font = "900 70px sans-serif"; ctx.fillStyle = 'white';
-                            const eText = Math.round(currentExactEle).toString(); 
-                            drawTextWithOutline(eText, finalW/2 + 180, sY);
-                            
-                            const eW = ctx.measureText(eText).width;
-                            ctx.font = "bold 35px sans-serif"; ctx.fillStyle = '#cbd5e1'; 
-                            drawTextWithOutline("m", finalW/2 + 180 + eW/2 + 25, sY);
-                        } else {
-                            ctx.font = "bold 24px sans-serif"; ctx.fillStyle = '#fb923c'; 
-                            drawTextWithOutline("UJETA VZDÁLENOST", 60, sY - 60);
-                            
-                            ctx.font = "900 70px sans-serif"; ctx.fillStyle = 'white';
-                            const dText = currentExactDist.toFixed(1); 
-                            drawTextWithOutline(dText, 60, sY);
-                            
-                            const dW = ctx.measureText(dText).width;
-                            ctx.font = "bold 35px sans-serif"; ctx.fillStyle = '#cbd5e1'; 
-                            drawTextWithOutline("km", 60 + dW + 10, sY);
-                            
-                            ctx.font = "bold 24px sans-serif"; ctx.fillStyle = '#fb923c'; 
-                            drawTextWithOutline("NADM. VÝŠKA", 450, sY - 60);
-                            
-                            ctx.font = "900 70px sans-serif"; ctx.fillStyle = 'white';
-                            const eText = Math.round(currentExactEle).toString(); 
-                            drawTextWithOutline(eText, 450, sY);
-                            
-                            const eW = ctx.measureText(eText).width;
-                            ctx.font = "bold 35px sans-serif"; ctx.fillStyle = '#cbd5e1'; 
-                            drawTextWithOutline("m", 450 + eW + 10, sY);
-                        }
-                    }
-                }
+                compCanvas = document.createElement('canvas');
+                compCanvas.width = compFinalW;
+                compCanvas.height = compFinalH;
+                compCtx = compCanvas.getContext('2d');
                 
                 const overlay = document.getElementById('recordCountdownOverlay');
                 const num = document.getElementById('countdownNumber');
@@ -747,9 +780,10 @@
                         clearInterval(countInt); overlay.style.opacity = '0';
                         setTimeout(() => { overlay.style.display = 'none'; num.classList.remove('text-white'); }, 300);
                         
-                        isRecording = true;
-                        compIntervalId = setInterval(drawCanvasFrame, 1000 / 30);
+                        isRecording = true; // Jakmile je True, začne event map.on('render') sázet framy!
+                        lastRecFrameTime = performance.now();
 
+                        // Nahráváme s plynulými 30 FPS. Stream si tahá snímky sám pokaždé, když se na compCanvas něco nakreslí
                         const canvasStream = compCanvas.captureStream(30);
                         recordedChunks = [];
                         mediaRecorder = new MediaRecorder(canvasStream, { mimeType: videoMimeType, videoBitsPerSecond: 8000000 });
@@ -762,7 +796,7 @@
                             const btnText = document.getElementById('recordBtnText');
                             const recordDot = document.getElementById('recordDot');
                             btnRec.classList.replace('bg-slate-800', 'bg-red-600');
-                            btnText.innerText = "Nahrát tiché video";
+                            btnText.innerText = "Nahrát video (.mp4)";
                             recordDot.classList.remove('pulse-recording');
                             
                             document.getElementById('hud-title').style.display = 'block';
@@ -783,7 +817,6 @@
                             setTimeout(() => { document.body.removeChild(a); window.URL.revokeObjectURL(url); }, 100);
                             
                             canvasStream.getTracks().forEach(track => track.stop());
-                            if (compIntervalId) clearInterval(compIntervalId);
                         };
 
                         mediaRecorder.start();
@@ -800,7 +833,6 @@
 
         function stopStudioRecording() {
             if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
-            if (compIntervalId) clearInterval(compIntervalId);
         }
 
         function safeParseGPX(xmlText, fileName) {
@@ -855,14 +887,7 @@
         function loadGPXData(pts, dist, routeName) {
             gpxtrackData = pts; totalTrackDistance = dist;
             
-            // Bezpečný reset dat bez volání metod na neexistující vrstvy
-            currentIdx = 0; 
-            currentAnimDist = 0;
-            currentExactDist = 0; 
-            currentExactEleGain = 0;
-            currentExactEle = pts[0].ele; 
-            isFinishingRec = false;
-            stopFlyover();
+            resetFlyover(); 
 
             document.getElementById('routeNameHud').innerText = routeName;
             document.getElementById('customRouteName').value = routeName;
@@ -883,7 +908,7 @@
             document.getElementById('hudEle').innerHTML = Math.round(currentExactEle) + '<span class="text-2xl text-slate-300 ml-1">m</span>';
             document.getElementById('eleGainVal').innerText = "0 m";
 
-            addRouteToMap(); // Vytvoří vrstvy na mapě
+            addRouteToMap(); 
             drawHUDProfile(); 
             map.jumpTo({ center: [pts[0].lon, pts[0].lat], zoom: 12, pitch: 0 });
         }
