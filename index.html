@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GPX 3D Trail Director V47 - Real-Time Cache Optimize</title>
+    <title>GPX 3D Trail Director V48 - Bounds & FOV Optimize</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/maplibre-gl@4.3.2/dist/maplibre-gl.js"></script>
@@ -73,7 +73,7 @@
                 </div>
                 <div>
                     <h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
-                        GPX 3D Trail Director <span class="bg-emerald-500/10 text-emerald-400 text-[10px] px-2.5 py-0.5 rounded-full uppercase font-extrabold border border-emerald-500/30">V47 REAL-TIME CACHE OPTIMIZE</span>
+                        GPX 3D Trail Director <span class="bg-sky-500/10 text-sky-400 text-[10px] px-2.5 py-0.5 rounded-full uppercase font-extrabold border border-sky-500/30">V48 BOUNDS & FOV OPTIMIZE</span>
                     </h1>
                 </div>
             </div>
@@ -246,7 +246,7 @@
         <p class="text-xs text-slate-500 uppercase tracking-widest font-semibold">
             Vytvořil <span class="text-orange-500 font-black">Wondraz</span> © 2026
         </p>
-        <span class="bg-slate-800 text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded border border-emerald-500/30">V47: REAL-TIME CACHE OPTIMIZE</span>
+        <span class="bg-slate-800 text-sky-400 text-[10px] font-bold px-2 py-0.5 rounded border border-sky-500/30">V48: BOUNDS & FOV OPTIMIZE</span>
     </footer>
 
     <input type="file" id="fileInput" accept=".gpx" style="display:none;" />
@@ -261,7 +261,7 @@
         let currentIdx = 0;
         let currentAnimDist = 0; 
         let speedFactor = 16; 
-        let originalSpeedFactor = 16; // Pro ukládání rychlosti během kešování
+        let originalSpeedFactor = 16;
         let animationFrameId = null; 
         let inStudioMode = false;
         let poisVisible = true;
@@ -275,7 +275,6 @@
         
         let mediaRecorder = null; let recordedChunks = []; let isRecording = false;
         
-        // V47 Cache proměnné
         let isCaching = false;
         let renderLoopId = null;
         let compCanvas = null;
@@ -321,7 +320,6 @@
         }
 
         function drawHUDProfile() {
-            // Pokud kešujeme terén, nekreslíme HUD abychom šetřili procesor
             if (isCaching) return;
 
             const container = document.getElementById('hud-profile-container');
@@ -369,7 +367,8 @@
             const btn = document.getElementById('togglePois');
             btn.innerText = "Hledám vrcholy...";
             
-            const margin = 0.08; 
+            // Omezení stahování POI dat na odpovídající margin 0.04
+            const margin = 0.04; 
             const query = `[out:json][timeout:15];(node["natural"="peak"](${minLat-margin},${minLon-margin},${maxLat+margin},${maxLon+margin});node["place"~"village|town|city"](${minLat-margin},${minLon-margin},${maxLat+margin},${maxLon+margin}););out body;`;
 
             try {
@@ -472,7 +471,10 @@
                 let targetPitchStr = document.getElementById('cameraPitchSelect').value;
                 let tPitch = parseInt(targetPitchStr) || 65;
 
-                map.flyTo({ center: [gpxtrackData[0].lon, gpxtrackData[0].lat], zoom: 14.5, pitch: tPitch, bearing: smoothBearing, duration: isCaching ? 500 : 1800, essential: true });
+                // V48: Zúžení FOV pomocí bližšího přiblížení. Zlepšuje výkon odstraněním dlaždic na horizontu.
+                let targetZoom = tPitch > 65 ? 16.0 : 15.2;
+
+                map.flyTo({ center: [gpxtrackData[0].lon, gpxtrackData[0].lat], zoom: targetZoom, pitch: tPitch, bearing: smoothBearing, duration: isCaching ? 500 : 1800, essential: true });
                 await new Promise(r => setTimeout(r, isCaching ? 600 : 1900));
             }
 
@@ -497,11 +499,10 @@
             if (currentIdx >= gpxtrackData.length - 1) { 
                 currentIdx = gpxtrackData.length - 1; 
                 
-                // V47 Logika po doletu na konec
                 if (isCaching) {
                     stopFlyover();
-                    speedFactor = originalSpeedFactor; // Vrácení rychlosti
-                    startActualRecordingPhase(); // Spuštění ostrého nahrávání
+                    speedFactor = originalSpeedFactor; 
+                    startActualRecordingPhase(); 
                     return;
                 }
 
@@ -548,7 +549,9 @@
             let diff = targetBearing - smoothBearing; while (diff < -180) diff += 360; while (diff > 180) diff -= 360;
             smoothBearing += diff * 0.04; smoothPitch += (tPitch - smoothPitch) * 0.05;
 
-            map.jumpTo({ center: [smoothLon, smoothLat], bearing: smoothBearing, pitch: smoothPitch, zoom: tPitch > 65 ? 15.5 : 14.5 });
+            // V48: Bližší přiblížení pro omezení načítání nadbytečného terénu
+            let targetZoom = tPitch > 65 ? 16.0 : 15.2;
+            map.jumpTo({ center: [smoothLon, smoothLat], bearing: smoothBearing, pitch: smoothPitch, zoom: targetZoom });
             
             animationFrameId = requestAnimationFrame(gameLoop);
         }
@@ -728,13 +731,9 @@
                 }
             }
             
-            // Loop pomocí requestAnimationFrame
             renderLoopId = requestAnimationFrame(renderCanvasFrame);
         }
 
-        // -------------------------------------------------------------
-        // V47: Start Nahrávání s Cache Runem
-        // -------------------------------------------------------------
         async function startStudioRecording() {
             if (isRecording || isCaching) { stopStudioRecording(); return; }
             
@@ -747,7 +746,6 @@
             document.getElementById('hud-profile-container').style.opacity = '0';
             document.getElementById('hud-stats').style.display = 'none';
 
-            // Zobrazit caching overlay
             const overlay = document.getElementById('recordCountdownOverlay');
             const num = document.getElementById('countdownNumber');
             const title = document.getElementById('renderStatusTitle');
@@ -757,16 +755,12 @@
             num.className = "text-4xl sm:text-6xl font-black text-white drop-shadow-[0_0_30px_rgba(16,185,129,0.8)] px-4 text-center anim-pop";
             num.innerText = "Stahuji mapu do paměti...";
 
-            // Zvýšit rychlost pro Cache Run
             originalSpeedFactor = speedFactor;
-            speedFactor = 120; // Turbo
+            speedFactor = 120; 
             
             cinematicStart();
         }
 
-        // -------------------------------------------------------------
-        // V47: Fáze 2 - Ostré nahrávání
-        // -------------------------------------------------------------
         function startActualRecordingPhase() {
             isCaching = false;
             resetFlyover();
@@ -807,7 +801,6 @@
                         
                         isRecording = true;
                         
-                        // Zásadní změna pro plynulost - rAF smyčka
                         renderLoopId = requestAnimationFrame(renderCanvasFrame);
 
                         const canvasStream = compCanvas.captureStream(30);
@@ -913,7 +906,8 @@
                 if(pts.length < 2) { alert("Trasa je příliš krátká."); return; }
                 totalElevationGain = Math.round(eleGain);
                 
-                const margin = 0.08; 
+                // V48 Omezující box zmenšen pro obrovskou úsporu VRAM/výkonu (~4.5 km od trasy)
+                const margin = 0.04; 
                 map.setMaxBounds([ [minLon - margin, minLat - margin], [maxLon + margin, maxLat + margin] ]);
 
                 const cleanName = fileName.replace(/\.[^/.]+$/, "");
@@ -1014,7 +1008,8 @@
                 }
                 totalElevationGain = Math.round(eleGain);
                 
-                const margin = 0.08; 
+                // V48 Zmenšený prostor ukázky pro výkon
+                const margin = 0.04; 
                 map.setMaxBounds([ [minLon - margin, minLat - margin], [maxLon + margin, maxLat + margin] ]);
                 
                 loadGPXData(pts, dist, "VÝŠLAP NA SNĚŽKU 🏔️");
