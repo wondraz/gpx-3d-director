@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GPX 3D Trail Director V48 - Bounds & FOV Optimize</title>
+    <title>GPX 3D Trail Director V48.1 - Fix & Optimize</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/maplibre-gl@4.3.2/dist/maplibre-gl.js"></script>
@@ -73,7 +73,7 @@
                 </div>
                 <div>
                     <h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
-                        GPX 3D Trail Director <span class="bg-sky-500/10 text-sky-400 text-[10px] px-2.5 py-0.5 rounded-full uppercase font-extrabold border border-sky-500/30">V48 BOUNDS & FOV OPTIMIZE</span>
+                        GPX 3D Trail Director <span class="bg-sky-500/10 text-sky-400 text-[10px] px-2.5 py-0.5 rounded-full uppercase font-extrabold border border-sky-500/30">V48.1 STABLE</span>
                     </h1>
                 </div>
             </div>
@@ -246,7 +246,7 @@
         <p class="text-xs text-slate-500 uppercase tracking-widest font-semibold">
             Vytvořil <span class="text-orange-500 font-black">Wondraz</span> © 2026
         </p>
-        <span class="bg-slate-800 text-sky-400 text-[10px] font-bold px-2 py-0.5 rounded border border-sky-500/30">V48: BOUNDS & FOV OPTIMIZE</span>
+        <span class="bg-slate-800 text-sky-400 text-[10px] font-bold px-2 py-0.5 rounded border border-sky-500/30">V48.1 BOUNDS & FOV STABLE</span>
     </footer>
 
     <input type="file" id="fileInput" accept=".gpx" style="display:none;" />
@@ -367,7 +367,6 @@
             const btn = document.getElementById('togglePois');
             btn.innerText = "Hledám vrcholy...";
             
-            // Omezení stahování POI dat na odpovídající margin 0.04
             const margin = 0.04; 
             const query = `[out:json][timeout:15];(node["natural"="peak"](${minLat-margin},${minLon-margin},${maxLat+margin},${maxLon+margin});node["place"~"village|town|city"](${minLat-margin},${minLon-margin},${maxLat+margin},${maxLon+margin}););out body;`;
 
@@ -470,8 +469,6 @@
 
                 let targetPitchStr = document.getElementById('cameraPitchSelect').value;
                 let tPitch = parseInt(targetPitchStr) || 65;
-
-                // V48: Zúžení FOV pomocí bližšího přiblížení. Zlepšuje výkon odstraněním dlaždic na horizontu.
                 let targetZoom = tPitch > 65 ? 16.0 : 15.2;
 
                 map.flyTo({ center: [gpxtrackData[0].lon, gpxtrackData[0].lat], zoom: targetZoom, pitch: tPitch, bearing: smoothBearing, duration: isCaching ? 500 : 1800, essential: true });
@@ -549,7 +546,6 @@
             let diff = targetBearing - smoothBearing; while (diff < -180) diff += 360; while (diff > 180) diff -= 360;
             smoothBearing += diff * 0.04; smoothPitch += (tPitch - smoothPitch) * 0.05;
 
-            // V48: Bližší přiblížení pro omezení načítání nadbytečného terénu
             let targetZoom = tPitch > 65 ? 16.0 : 15.2;
             map.jumpTo({ center: [smoothLon, smoothLat], bearing: smoothBearing, pitch: smoothPitch, zoom: targetZoom });
             
@@ -906,7 +902,6 @@
                 if(pts.length < 2) { alert("Trasa je příliš krátká."); return; }
                 totalElevationGain = Math.round(eleGain);
                 
-                // V48 Omezující box zmenšen pro obrovskou úsporu VRAM/výkonu (~4.5 km od trasy)
                 const margin = 0.04; 
                 map.setMaxBounds([ [minLon - margin, minLat - margin], [maxLon + margin, maxLat + margin] ]);
 
@@ -1008,7 +1003,6 @@
                 }
                 totalElevationGain = Math.round(eleGain);
                 
-                // V48 Zmenšený prostor ukázky pro výkon
                 const margin = 0.04; 
                 map.setMaxBounds([ [minLon - margin, minLat - margin], [maxLon + margin, maxLat + margin] ]);
                 
