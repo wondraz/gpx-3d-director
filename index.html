@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GPX 3D Trail Director V32 - Smart Recording & Dynamics</title>
+    <title>GPX 3D Trail Director V33 - Auto-Cropped Recording</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/maplibre-gl@4.3.2/dist/maplibre-gl.js"></script>
@@ -88,7 +88,7 @@
                 </div>
                 <div>
                     <h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
-                        GPX 3D Trail Director <span class="bg-orange-500/10 text-orange-400 text-[10px] px-2.5 py-0.5 rounded-full uppercase font-extrabold border border-orange-500/30">V32 PRO</span>
+                        GPX 3D Trail Director <span class="bg-orange-500/10 text-orange-400 text-[10px] px-2.5 py-0.5 rounded-full uppercase font-extrabold border border-orange-500/30">V33 PRO</span>
                     </h1>
                 </div>
             </div>
@@ -216,6 +216,7 @@
                 <div id="recordCountdownOverlay" class="absolute inset-0 bg-black/80 z-[9999999] flex flex-col items-center justify-center transition-opacity duration-300" style="display:none; opacity:0;">
                     <p class="text-orange-500 font-bold tracking-widest uppercase mb-4">Připravte se na let</p>
                     <div id="countdownNumber" class="text-9xl font-black text-white drop-shadow-[0_0_30px_rgba(249,115,22,0.8)]">3</div>
+                    <p class="text-slate-400 text-sm mt-8">Vybrali jste pro záznam "Karta v prohlížeči"?</p>
                 </div>
 
                 <div id="studio-controls" class="absolute bottom-8 left-1/2 -translate-x-1/2 bg-slate-900/95 backdrop-blur-md border border-slate-700 p-3 rounded-2xl flex items-center gap-3 z-[999999] shadow-2xl transition-opacity duration-500 w-[90%] sm:w-auto overflow-hidden" style="display:none;">
@@ -230,7 +231,7 @@
                         ▶ Letět (Bez záznamu)
                     </button>
                     <button id="btnStudioRecord" class="bg-red-600 hover:bg-red-500 text-white px-6 py-2.5 rounded-xl text-sm font-bold transition flex items-center gap-2 shadow-[0_0_15px_rgba(220,38,38,0.5)] whitespace-nowrap">
-                        <span id="recordDot" class="w-2.5 h-2.5 bg-white rounded-full inline-block"></span> <span id="recordBtnText">REC do videa</span>
+                        <span id="recordDot" class="w-2.5 h-2.5 bg-white rounded-full inline-block"></span> <span id="recordBtnText">REC Ořezané video</span>
                     </button>
                     <div class="w-px h-8 bg-slate-700 mx-1 hidden sm:block"></div>
                     <button id="btnStudioExit" class="text-slate-400 hover:text-white px-3 py-2.5 text-sm font-bold transition whitespace-nowrap">
@@ -261,6 +262,10 @@
         let targetPitch = 65; let smoothPitch = 65;
         
         let mediaRecorder = null; let recordedChunks = []; let isRecording = false;
+        
+        // Nové globální proměnné pro chytrý Canvas Cropper
+        let cropHiddenVideo = null;
+        let cropRafId = null;
 
         function initMap() {
             map = new maplibregl.Map({
@@ -296,7 +301,6 @@
             return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
         }
 
-        // VYLEPŠENÝ VÝŠKOVÝ PROFIL: Kreslí po segmentech pro barevné rozlišení stoupání (červená) a klesání/rovin (zelená)
         function drawHUDProfile() {
             const container = document.getElementById('hud-profile-container');
             if (!gpxtrackData.length || !document.getElementById('showProfile').checked) { container.style.opacity = '0'; return; }
@@ -311,7 +315,6 @@
             gpxtrackData.forEach(p => { if(p.ele < minE) minE = p.ele; if(p.ele > maxE) maxE = p.ele; });
             const range = maxE - minE || 1;
 
-            // Bledý podklad
             ctx.beginPath();
             gpxtrackData.forEach((p, i) => {
                 const x = (p.dist / totalTrackDistance) * W;
@@ -320,7 +323,6 @@
             });
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)'; ctx.lineWidth = 6; ctx.lineJoin = 'round'; ctx.stroke();
 
-            // Aktivní barevná část
             const activeData = gpxtrackData.slice(0, Math.floor(currentIdx) + 1);
             if (activeData.length > 1) {
                 ctx.lineWidth = 6;
@@ -335,7 +337,6 @@
                     ctx.moveTo(x1, y1);
                     ctx.lineTo(x2, y2);
                     
-                    // Zelená = z kopce nebo rovina, Červená = do kopce
                     ctx.strokeStyle = (p2.ele > p1.ele + 0.5) ? '#ef4444' : '#22c55e';
                     ctx.stroke();
                 }
@@ -436,7 +437,6 @@
             let diff = bearingTarget - smoothBearing; while (diff < -180) diff += 360; while (diff > 180) diff -= 360;
             smoothBearing += diff * 0.04; 
             
-            // Reakce na změnu kamery za letu
             smoothPitch += (targetPitch - smoothPitch) * 0.05;
 
             map.jumpTo({ center: [smoothLon, smoothLat], bearing: smoothBearing, pitch: smoothPitch, zoom: targetPitch > 65 ? 15.5 : 14.5 });
@@ -506,24 +506,73 @@
                 let videoMimeType = 'video/webm;codecs=vp9'; let videoExt = 'webm';
                 if (MediaRecorder.isTypeSupported('video/mp4;codecs=avc1')) { videoMimeType = 'video/mp4;codecs=avc1'; videoExt = 'mp4'; } 
 
-                const stream = await navigator.mediaDevices.getDisplayMedia({ video: { displaySurface: "browser", width: 1920, height: 1080, frameRate: 60 }, audio: false, preferCurrentTab: true });
-                recordedChunks = []; isRecording = true;
-
-                const btnRec = document.getElementById('btnStudioRecord');
-                const btnText = document.getElementById('recordBtnText');
-                const recordDot = document.getElementById('recordDot');
+                // Získání streamu celé obrazovky/karty
+                const rawStream = await navigator.mediaDevices.getDisplayMedia({ video: { displaySurface: "browser", width: 1920, height: 1080, frameRate: 60 }, audio: false, preferCurrentTab: true });
                 
-                // SKRYTÍ MENU
+                // SKRYTÍ MENU ABY NEPŘEKÁŽELO V OŘEZU
                 document.getElementById('studio-controls').style.opacity = '0';
                 document.getElementById('studio-controls').style.pointerEvents = 'none';
 
-                mediaRecorder = new MediaRecorder(stream, { mimeType: videoMimeType, videoBitsPerSecond: 14000000 });
+                // --- CANVAS CROPPER LOGIKA ---
+                const isIG = document.body.classList.contains('format-ig');
+                const finalWidth = isIG ? 1080 : 1920;
+                const finalHeight = isIG ? 1920 : 1080;
+
+                cropHiddenVideo = document.createElement('video');
+                cropHiddenVideo.srcObject = rawStream;
+                cropHiddenVideo.muted = true;
+                await cropHiddenVideo.play();
+
+                const recordCanvas = document.createElement('canvas');
+                recordCanvas.width = finalWidth;
+                recordCanvas.height = finalHeight;
+                const recordCtx = recordCanvas.getContext('2d');
+                
+                const wrapper = document.getElementById('map-wrapper');
+
+                isRecording = true;
+                
+                function drawCropFrame() {
+                    if (!isRecording) return;
+                    
+                    const vw = cropHiddenVideo.videoWidth;
+                    const vh = cropHiddenVideo.videoHeight;
+                    
+                    if (vw > 0 && vh > 0) {
+                        const rect = wrapper.getBoundingClientRect();
+                        const scaleX = vw / window.innerWidth;
+                        const scaleY = vh / window.innerHeight;
+
+                        const cropX = rect.left * scaleX;
+                        const cropY = rect.top * scaleY;
+                        const cropW = rect.width * scaleX;
+                        const cropH = rect.height * scaleY;
+
+                        recordCtx.fillStyle = '#000';
+                        recordCtx.fillRect(0, 0, finalWidth, finalHeight);
+                        recordCtx.drawImage(cropHiddenVideo, cropX, cropY, cropW, cropH, 0, 0, finalWidth, finalHeight);
+                    }
+                    
+                    cropRafId = requestAnimationFrame(drawCropFrame);
+                }
+                
+                drawCropFrame();
+
+                // Získáme stream z plátna místo čistého obrazu
+                const canvasStream = recordCanvas.captureStream(60);
+                recordedChunks = [];
+
+                mediaRecorder = new MediaRecorder(canvasStream, { mimeType: videoMimeType, videoBitsPerSecond: 14000000 });
                 mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); };
                 
                 mediaRecorder.onstop = () => {
                     isRecording = false;
+                    
+                    const btnRec = document.getElementById('btnStudioRecord');
+                    const btnText = document.getElementById('recordBtnText');
+                    const recordDot = document.getElementById('recordDot');
                     btnRec.classList.replace('bg-slate-800', 'bg-red-600');
-                    btnText.innerText = "REC do videa";
+                    btnText.innerText = "REC Ořezané video";
                     recordDot.classList.remove('pulse-recording');
                     
                     document.getElementById('studio-controls').style.opacity = '1';
@@ -534,25 +583,26 @@
                     const a = document.createElement('a'); a.style.display = 'none'; a.href = url;
                     
                     const userFileName = document.getElementById('customRouteName').value.trim();
-                    a.download = `${userFileName ? userFileName : '3D-Trail'}.${videoExt}`;
+                    a.download = `${userFileName ? userFileName : '3D-Trail-Cropped'}.${videoExt}`;
                     
                     document.body.appendChild(a); a.click();
                     setTimeout(() => { document.body.removeChild(a); window.URL.revokeObjectURL(url); }, 100);
-                    stream.getTracks().forEach(track => track.stop());
+                    
+                    // Úklid po nahrávání
+                    rawStream.getTracks().forEach(track => track.stop());
+                    canvasStream.getTracks().forEach(track => track.stop());
+                    if (cropRafId) cancelAnimationFrame(cropRafId);
                 };
 
-                stream.getVideoTracks()[0].onended = () => { if (isRecording) stopStudioRecording(); };
+                rawStream.getVideoTracks()[0].onended = () => { if (isRecording) stopStudioRecording(); };
 
                 mediaRecorder.start();
                 
-                // --- NOVINKA: VIZUÁLNÍ ODPOČET ---
+                // ODPOČET
                 const overlay = document.getElementById('recordCountdownOverlay');
                 const num = document.getElementById('countdownNumber');
                 overlay.style.display = 'flex';
-                
-                // Malý hack na překreslení DOMu
-                overlay.offsetHeight; 
-                overlay.style.opacity = '1';
+                overlay.offsetHeight; overlay.style.opacity = '1';
 
                 let count = 3;
                 num.innerText = count;
@@ -584,6 +634,11 @@
 
         function stopStudioRecording() {
             if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+            if (cropRafId) cancelAnimationFrame(cropRafId);
+            if (cropHiddenVideo) {
+                cropHiddenVideo.pause();
+                cropHiddenVideo.srcObject = null;
+            }
         }
 
         function safeParseGPX(xmlText, fileName) {
